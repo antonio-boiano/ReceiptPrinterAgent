@@ -142,7 +142,7 @@ def create_app(db_url: Optional[str] = None, auth_token: Optional[str] = None) -
     return app
 
 
-def run_dashboard(host: str = "127.0.0.1", port: int = 5000, debug: bool = True) -> None:
+def run_dashboard(host: str = "127.0.0.1", port: int = 5000, debug: bool = False) -> None:
     """Run the dashboard server."""
     app = create_app()
     print("=" * 50)

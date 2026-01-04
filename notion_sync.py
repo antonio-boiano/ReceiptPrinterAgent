@@ -4,8 +4,14 @@
 import os
 import sys
 
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Ensure the project root is in the path
+project_root = os.path.dirname(os.path.abspath(__file__))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from src.notion import main
 

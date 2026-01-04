@@ -179,8 +179,8 @@ class TaskDatabase:
                         created_at=row[4],
                         email_context=row[5],
                         similarity_distance=row[6],  # Include the distance from the query
+                    )
                 )
-            )
 
             cursor.close()
             return results

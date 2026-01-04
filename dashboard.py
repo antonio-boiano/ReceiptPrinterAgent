@@ -5,8 +5,10 @@ import argparse
 import os
 import sys
 
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Ensure the project root is in the path
+project_root = os.path.dirname(os.path.abspath(__file__))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from dotenv import load_dotenv
 
@@ -32,18 +34,11 @@ def main():
     parser.add_argument(
         "--debug",
         action="store_true",
-        default=True,
-        help="Run in debug mode (default: True)",
-    )
-    parser.add_argument(
-        "--no-debug",
-        action="store_true",
-        help="Disable debug mode",
+        default=False,
+        help="Run in debug mode (default: False)",
     )
 
     args = parser.parse_args()
-
-    debug = not args.no_debug and args.debug
 
     print("=" * 50)
     print("TASK DASHBOARD")
@@ -51,7 +46,7 @@ def main():
     print(f"\n🌐 Starting dashboard at http://{args.host}:{args.port}")
     print("\nPress Ctrl+C to stop the server.\n")
 
-    run_dashboard(host=args.host, port=args.port, debug=debug)
+    run_dashboard(host=args.host, port=args.port, debug=args.debug)
 
 
 if __name__ == "__main__":
