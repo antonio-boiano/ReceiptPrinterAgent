@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Dashboard - Receipt Printer Agent</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .stat-card .label {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 30px;
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .panel h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .task-list {
+            list-style: none;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            border-bottom: 1px solid #eee;
+            transition: background 0.2s ease;
+        }
+
+        .task-item:hover {
+            background: #f8f9fa;
+        }
+
+        .task-item:last-child {
+            border-bottom: none;
+        }
+
+        .priority-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .priority-high { background: #e74c3c; }
+        .priority-medium { background: #f39c12; }
+        .priority-low { background: #27ae60; }
+
+        .task-details {
+            flex: 1;
+        }
+
+        .task-name {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .task-meta {
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .add-task-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group label {
+            font-size: 0.9rem;
+            color: #666;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .search-box {
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+
+        .empty-state .icon {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+        }
+
+        .notification.success { background: #27ae60; }
+        .notification.error { background: #e74c3c; }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .refresh-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: #667eea;
+            transition: transform 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📋 Task Dashboard</h1>
+            <p>Receipt Printer Agent - Track your tasks and progress</p>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="icon">📊</div>
+                <div class="value" id="total-tasks">-</div>
+                <div class="label">Total Tasks</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">🔴</div>
+                <div class="value" id="high-priority">-</div>
+                <div class="label">High Priority</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">🟡</div>
+                <div class="value" id="medium-priority">-</div>
+                <div class="label">Medium Priority</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">📅</div>
+                <div class="value" id="due-today">-</div>
+                <div class="label">Due Today</div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="panel">
+                <h2>
+                    📋 Task List 
+                    <button class="refresh-btn" onclick="loadTasks()">🔄</button>
+                </h2>
+                <div class="search-box">
+                    <input type="text" id="search-input" placeholder="Search tasks..." oninput="searchTasks()">
+                </div>
+                <ul class="task-list" id="task-list">
+                    <li class="loading">Loading tasks...</li>
+                </ul>
+            </div>
+
+            <div class="panel">
+                <h2>➕ Add New Task</h2>
+                <form class="add-task-form" onsubmit="addTask(event)">
+                    <div class="form-group">
+                        <label for="task-name">Task Name</label>
+                        <input type="text" id="task-name" placeholder="Enter task name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="task-priority">Priority</label>
+                        <select id="task-priority">
+                            <option value="1">🔴 High</option>
+                            <option value="2" selected>🟡 Medium</option>
+                            <option value="3">🟢 Low</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="task-due-date">Due Date</label>
+                        <input type="date" id="task-due-date">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Task</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API base URL
+        const API_BASE = '';
+
+        // Load stats on page load
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_BASE}/api/stats`);
+                const data = await response.json();
+                
+                document.getElementById('total-tasks').textContent = data.total;
+                document.getElementById('high-priority').textContent = data.high_priority;
+                document.getElementById('medium-priority').textContent = data.medium_priority;
+                document.getElementById('due-today').textContent = data.due_today;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        // Load tasks
+        async function loadTasks() {
+            const taskList = document.getElementById('task-list');
+            taskList.innerHTML = '<li class="loading">Loading tasks...</li>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/tasks`);
+                const data = await response.json();
+                
+                if (data.tasks.length === 0) {
+                    taskList.innerHTML = `
+                        <li class="empty-state">
+                            <div class="icon">📭</div>
+                            <p>No tasks yet. Add your first task!</p>
+                        </li>
+                    `;
+                    return;
+                }
+                
+                taskList.innerHTML = data.tasks.map(task => renderTask(task)).join('');
+            } catch (error) {
+                console.error('Error loading tasks:', error);
+                taskList.innerHTML = `
+                    <li class="empty-state">
+                        <div class="icon">⚠️</div>
+                        <p>Error loading tasks. Please try again.</p>
+                    </li>
+                `;
+            }
+        }
+
+        // Render a single task
+        function renderTask(task) {
+            const priorityClass = task.priority === 1 ? 'priority-high' : 
+                                  task.priority === 2 ? 'priority-medium' : 'priority-low';
+            const priorityLabel = task.priority === 1 ? 'High' : 
+                                  task.priority === 2 ? 'Medium' : 'Low';
+            
+            const dueDate = task.due_date ? new Date(task.due_date).toLocaleDateString() : 'No due date';
+            
+            return `
+                <li class="task-item">
+                    <div class="priority-indicator ${priorityClass}"></div>
+                    <div class="task-details">
+                        <div class="task-name">${escapeHtml(task.name)}</div>
+                        <div class="task-meta">
+                            ${priorityLabel} Priority • Due: ${dueDate}
+                        </div>
+                    </div>
+                </li>
+            `;
+        }
+
+        // Search tasks
+        let searchTimeout;
+        async function searchTasks() {
+            clearTimeout(searchTimeout);
+            const query = document.getElementById('search-input').value.trim();
+            
+            if (!query) {
+                loadTasks();
+                return;
+            }
+            
+            searchTimeout = setTimeout(async () => {
+                const taskList = document.getElementById('task-list');
+                taskList.innerHTML = '<li class="loading">Searching...</li>';
+                
+                try {
+                    const response = await fetch(`${API_BASE}/api/tasks/search?q=${encodeURIComponent(query)}`);
+                    const data = await response.json();
+                    
+                    if (data.tasks.length === 0) {
+                        taskList.innerHTML = `
+                            <li class="empty-state">
+                                <div class="icon">🔍</div>
+                                <p>No matching tasks found.</p>
+                            </li>
+                        `;
+                        return;
+                    }
+                    
+                    taskList.innerHTML = data.tasks.map(task => renderTask(task)).join('');
+                } catch (error) {
+                    console.error('Error searching tasks:', error);
+                }
+            }, 300);
+        }
+
+        // Add new task
+        async function addTask(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('task-name').value.trim();
+            const priority = parseInt(document.getElementById('task-priority').value);
+            const dueDate = document.getElementById('task-due-date').value;
+            
+            if (!name) {
+                showNotification('Please enter a task name', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/tasks`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        priority: priority,
+                        due_date: dueDate || new Date().toISOString().split('T')[0],
+                    }),
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Task added successfully!', 'success');
+                    document.getElementById('task-name').value = '';
+                    document.getElementById('task-due-date').value = '';
+                    loadTasks();
+                    loadStats();
+                } else {
+                    showNotification(data.error || 'Error adding task', 'error');
+                }
+            } catch (error) {
+                console.error('Error adding task:', error);
+                showNotification('Error adding task. Please try again.', 'error');
+            }
+        }
+
+        // Show notification
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStats();
+            loadTasks();
+            
+            // Set default due date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('task-due-date').value = today;
+        });
+
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            loadStats();
+            loadTasks();
+        }, 30000);
+    </script>
+</body>
+</html>

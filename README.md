@@ -1,6 +1,6 @@
 # Receipt Printer Task Manager
 
-A Python-based task management system that prints tasks to a thermal receipt printer and integrates with various services.
+A Python-based task management system that prints tasks to a thermal receipt printer and integrates with various services using Arcade.dev.
 
 ## Features
 
@@ -8,6 +8,8 @@ A Python-based task management system that prints tasks to a thermal receipt pri
 - Extract tasks from Gmail automatically
 - AI-powered task parsing and prioritization
 - Duplicate detection using vector embeddings
+- **Local Dashboard** - Web-based UI for task tracking and management
+- **Notion Integration** - Sync tasks to Notion for team collaboration
 - Integration with multiple services (Gmail, Slack, Calendar, Notion) via Arcade.dev
 
 ## Installation
@@ -33,7 +35,25 @@ Required environment variables:
 - `TURSO_DATABASE_URL` - Database URL (optional, uses local SQLite by default)
 - `TURSO_AUTH_TOKEN` - Database auth token (if using Turso)
 
+Optional environment variables:
+- `NOTION_DATABASE_ID` - Notion database ID for task sync
+- `DASHBOARD_HOST` - Dashboard host (default: 127.0.0.1)
+- `DASHBOARD_PORT` - Dashboard port (default: 5000)
+
 ## Usage
+
+### Run the Local Dashboard
+```bash
+python dashboard.py
+# Access at http://127.0.0.1:5000
+```
+
+The dashboard provides:
+- Real-time task statistics
+- Task list with priority indicators
+- Search functionality (semantic search)
+- Add new tasks directly from the UI
+- Auto-refresh every 30 seconds
 
 ### Extract tasks from Gmail
 ```bash
@@ -50,16 +70,66 @@ python main.py
 python tools.py
 ```
 
+### Sync tasks to Notion
+```bash
+python notion_sync.py
+```
+
+This will:
+1. Check Notion authorization (redirect to login if needed)
+2. Allow you to search for Notion databases
+3. Sync local tasks to your Notion database
+4. Create individual tasks in Notion
+
 ### Setup database
 ```bash
 python setup_database.py
 ```
 
+## Notion Integration
+
+To use Notion integration:
+
+1. Get your Notion database ID from the database URL:
+   - Example: `https://notion.so/username/Tasks-abc123def456`
+   - Database ID is: `abc123def456`
+
+2. Add to your `.env` file:
+   ```
+   NOTION_DATABASE_ID=abc123def456
+   ```
+
+3. Your Notion database should have these properties:
+   - **Name** (Title) - Task name
+   - **Status** (Select) - Options: "To Do", "In Progress", "Done"
+   - **Priority** (Select) - Options: "High", "Medium", "Low"
+   - **Due Date** (Date) - Task due date
+
+4. Run `python notion_sync.py` and authorize when prompted
+
+## Dashboard API
+
+The dashboard exposes a REST API:
+
+- `GET /api/tasks` - List all tasks
+- `POST /api/tasks` - Add a new task
+- `GET /api/tasks/search?q=query` - Search tasks (semantic)
+- `GET /api/stats` - Get task statistics
+
 ## Requirements
 
 - Python 3.8+
-- Thermal receipt printer (USB)
+- Thermal receipt printer (USB) - Optional
 - API keys for OpenAI and Arcade.dev
+
+## Architecture
+
+The project uses Arcade.dev for all external integrations:
+- Gmail access for email extraction
+- Notion access for task syncing
+- Calendar, Slack, and other integrations
+
+This provides a unified authentication and authorization flow through Arcade.
 
 ## License
 
