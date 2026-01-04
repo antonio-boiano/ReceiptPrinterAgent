@@ -7,7 +7,8 @@ from typing import Any, Dict, List, Optional
 
 from arcadepy import Arcade
 from dotenv import load_dotenv
-from openai import OpenAI
+
+from agent_config import get_llm_client, get_default_model
 
 # Load environment variables
 load_dotenv()
@@ -39,7 +40,7 @@ class ToolkitAgent:
         name: str,
         toolkits: List[str],
         instructions: str,
-        model: str = "gpt-4o-mini",
+        model: Optional[str] = None,
     ):
         """
         Initialize a toolkit agent.
@@ -48,14 +49,14 @@ class ToolkitAgent:
             name: Agent name
             toolkits: List of toolkit names to use
             instructions: Agent instructions
-            model: AI model to use
+            model: AI model to use (defaults to configured provider's default)
         """
         self.name = name
         self.toolkits = toolkits
         self.instructions = instructions
-        self.model = model
+        self.model = model or get_default_model()
         self.client = Arcade()
-        self.openai = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.llm_client = get_llm_client()
         self.user_id = os.getenv("ARCADE_USER_ID", "user@example.com")
 
     def authorize_tool(self, tool_name: str) -> Optional[str]:
@@ -86,7 +87,7 @@ class ToolkitAgent:
             return f"Error: {str(e)}"
 
     def run(self, input_text: str, context: Optional[Dict[str, Any]] = None) -> str:
-        """Run the agent with the given input using OpenAI and Arcade tools."""
+        """Run the agent with the given input using LLM and Arcade tools."""
         # Build system prompt with available tools
         tools_info = "\n".join(
             [f"- {tk}: {AVAILABLE_TOOLKITS.get(tk, 'Unknown toolkit')}" 
@@ -102,7 +103,7 @@ When you need to use a tool, indicate which tool and what parameters to use.
 Provide helpful, clear responses based on the available tools."""
 
         try:
-            response = self.openai.chat.completions.create(
+            response = self.llm_client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": system_prompt},

@@ -1,13 +1,18 @@
-"""OpenAI API client for task generation."""
+"""LLM API client for task generation."""
 
 import os
+import sys
 
-from openai import OpenAI
+# Add project root to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+
+from agent_config import get_llm_client, get_default_model
 
 
 def get_task_from_ai(task_description):
-    """Get a formatted task from OpenAI API."""
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    """Get a formatted task from LLM API."""
+    client = get_llm_client()
+    model = get_default_model()
 
     prompt = f"""
     Convert this task description into a clear, concise task name:
@@ -25,7 +30,7 @@ def get_task_from_ai(task_description):
 
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=model,
             messages=[{"role": "user", "content": prompt}],
             max_tokens=100,
             temperature=0.3,
@@ -37,7 +42,8 @@ def get_task_from_ai(task_description):
 
 def analyze_emails_for_tasks(emails_content):
     """Analyze Gmail emails to identify actionable tasks."""
-    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = get_llm_client()
+    model = get_default_model()
 
     prompt = f"""
     You are an email assistant. Look at these emails and find ANY that might need a response, follow-up, or action.
@@ -69,7 +75,7 @@ def analyze_emails_for_tasks(emails_content):
 
     try:
         response = client.chat.completions.create(
-            model="o4-mini",
+            model=model,
             messages=[{"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
         )
@@ -81,12 +87,12 @@ def analyze_emails_for_tasks(emails_content):
             content = message.content
             refusal = getattr(message, "refusal", None)
 
-            print(f"DEBUG: Raw OpenAI response: {content}")
-            print(f"DEBUG: OpenAI refusal: {refusal}")
+            print(f"DEBUG: Raw LLM response: {content}")
+            print(f"DEBUG: LLM refusal: {refusal}")
 
             if content is None and refusal:
                 print(
-                    "DEBUG: OpenAI refused to generate content, trying simpler prompt..."
+                    "DEBUG: LLM refused to generate content, trying simpler prompt..."
                 )
                 # Try with a simpler prompt without strict JSON formatting
                 simple_prompt = f"""
@@ -104,7 +110,7 @@ def analyze_emails_for_tasks(emails_content):
                 """
 
                 fallback_response = client.chat.completions.create(
-                    model="o4-mini",
+                    model=model,
                     messages=[{"role": "user", "content": simple_prompt}],
                     max_tokens=1000,
                     temperature=0.1,
@@ -112,19 +118,19 @@ def analyze_emails_for_tasks(emails_content):
 
                 fallback_content = fallback_response.choices[0].message.content
                 print(f"DEBUG: Fallback response: {fallback_content}")
-                return fallback_content or "Error: OpenAI returned None content"
+                return fallback_content or "Error: LLM returned None content"
 
             if content is None:
-                print("DEBUG: OpenAI returned None content")
-                return "Error: OpenAI returned None content"
+                print("DEBUG: LLM returned None content")
+                return "Error: LLM returned None content"
 
             return content
         else:
-            return "Error: No response choices from OpenAI"
+            return "Error: No response choices from LLM"
 
     except Exception as e:
         error_msg = f"Error: {str(e)}"
-        print(f"DEBUG: OpenAI API error: {error_msg}")
+        print(f"DEBUG: LLM API error: {error_msg}")
         return error_msg
 
 

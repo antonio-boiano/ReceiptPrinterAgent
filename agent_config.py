@@ -1,25 +1,83 @@
 #!/usr/bin/env python3
-"""Configuration settings for the OpenAI Arcade Agent."""
+"""Configuration settings for the AI Arcade Agent."""
 
 import os
 
 from dotenv import load_dotenv
+from openai import OpenAI
 
 # Load environment variables
 load_dotenv()
 
+# LLM Provider configuration
+LLM_PROVIDERS = {
+    "openai": {
+        "base_url": None,  # Uses default OpenAI URL
+        "default_model": "gpt-4o-mini",
+        "models": ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo", "gpt-4-turbo"],
+    },
+    "deepseek": {
+        "base_url": "https://api.deepseek.com",
+        "default_model": "deepseek-chat",
+        "models": ["deepseek-chat", "deepseek-reasoner"],
+    },
+}
+
+
+def get_llm_client() -> OpenAI:
+    """
+    Get an LLM client configured based on environment variables.
+    
+    Supports OpenAI and DeepSeek (OpenAI-compatible API).
+    Configure via LLM_PROVIDER env var: 'openai' (default) or 'deepseek'.
+    
+    Returns:
+        OpenAI client configured for the selected provider.
+    """
+    provider = os.getenv("LLM_PROVIDER", "openai").lower()
+    
+    if provider == "deepseek":
+        api_key = os.getenv("DEEPSEEK_API_KEY")
+        if not api_key:
+            raise ValueError("DEEPSEEK_API_KEY is required when LLM_PROVIDER is 'deepseek'")
+        return OpenAI(
+            api_key=api_key,
+            base_url=LLM_PROVIDERS["deepseek"]["base_url"],
+        )
+    else:
+        # Default to OpenAI
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY is required when LLM_PROVIDER is 'openai'")
+        return OpenAI(api_key=api_key)
+
+
+def get_default_model() -> str:
+    """Get the default model for the configured LLM provider."""
+    provider = os.getenv("LLM_PROVIDER", "openai").lower()
+    if provider in LLM_PROVIDERS:
+        return LLM_PROVIDERS[provider]["default_model"]
+    return LLM_PROVIDERS["openai"]["default_model"]
+
 
 class AgentConfig:
-    """Configuration class for the OpenAI Arcade Agent."""
+    """Configuration class for the AI Arcade Agent."""
 
     # API Keys
     ARCADE_API_KEY = os.getenv("ARCADE_API_KEY")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+    DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
     ARCADE_USER_ID = os.getenv("ARCADE_USER_ID", "hi@lewismenelaws.com")
+    
+    # LLM Provider (openai or deepseek)
+    LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower()
 
     # Agent Settings
-    DEFAULT_MODEL = "gpt-4o-mini"
-    ALTERNATIVE_MODELS = ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo", "gpt-4-turbo"]
+    DEFAULT_MODEL = get_default_model()
+    ALTERNATIVE_MODELS = LLM_PROVIDERS.get(
+        os.getenv("LLM_PROVIDER", "openai").lower(), 
+        LLM_PROVIDERS["openai"]
+    )["models"]
 
     # Default Toolkits
     DEFAULT_TOOLKITS = ["gmail", "math"]
@@ -85,8 +143,13 @@ class AgentConfig:
         if not cls.ARCADE_API_KEY:
             missing.append("ARCADE_API_KEY")
 
-        if not cls.OPENAI_API_KEY:
-            missing.append("OPENAI_API_KEY")
+        # Check LLM provider API key
+        if cls.LLM_PROVIDER == "deepseek":
+            if not cls.DEEPSEEK_API_KEY:
+                missing.append("DEEPSEEK_API_KEY")
+        else:
+            if not cls.OPENAI_API_KEY:
+                missing.append("OPENAI_API_KEY")
 
         if missing:
             print("❌ Missing required environment variables:")
@@ -102,6 +165,7 @@ class AgentConfig:
         """Display current configuration information."""
         print("🔧 AGENT CONFIGURATION")
         print("=" * 50)
+        print(f"LLM Provider: {cls.LLM_PROVIDER}")
         print(f"Model: {cls.DEFAULT_MODEL}")
         print(f"User ID: {cls.ARCADE_USER_ID}")
         print(f"Auto Print: {cls.AUTO_PRINT}")
@@ -116,7 +180,10 @@ class AgentConfig:
         # Check API keys (without revealing them)
         print("\n🔑 API KEYS:")
         print(f"   Arcade API Key: {'✅ Set' if cls.ARCADE_API_KEY else '❌ Missing'}")
-        print(f"   OpenAI API Key: {'✅ Set' if cls.OPENAI_API_KEY else '❌ Missing'}")
+        if cls.LLM_PROVIDER == "deepseek":
+            print(f"   DeepSeek API Key: {'✅ Set' if cls.DEEPSEEK_API_KEY else '❌ Missing'}")
+        else:
+            print(f"   OpenAI API Key: {'✅ Set' if cls.OPENAI_API_KEY else '❌ Missing'}")
 
 
 # Preset configurations for different use cases

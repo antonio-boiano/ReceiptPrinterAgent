@@ -10,8 +10,8 @@ from typing import List, Optional
 
 from arcadepy import Arcade
 from dotenv import load_dotenv
-from openai import OpenAI
 
+from agent_config import get_llm_client, get_default_model
 from src.database.task_db import TaskDatabase, TaskRecord
 
 # Load environment variables
@@ -41,7 +41,8 @@ class ArcadeEmailAgent:
     def __init__(self, user_id: Optional[str] = None):
         """Initialize the agent with Arcade client."""
         self.client = Arcade()
-        self.openai = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.llm_client = get_llm_client()
+        self.model = get_default_model()
         self.user_id = user_id or os.getenv("ARCADE_USER_ID", "user@example.com")
 
     def authorize_gmail(self) -> Optional[str]:
@@ -102,8 +103,8 @@ If no actionable tasks, return: {{"tasks": [], "summary": "No actionable tasks f
 """
 
         try:
-            response = self.openai.chat.completions.create(
-                model="gpt-4o-mini",
+            response = self.llm_client.chat.completions.create(
+                model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 response_format={"type": "json_object"},
             )
