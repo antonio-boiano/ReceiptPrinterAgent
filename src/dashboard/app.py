@@ -10,7 +10,7 @@ from flask_cors import CORS
 from src.database.task_db import TaskDatabase, TaskRecord
 
 
-def create_app(db_url: Optional[str] = None, auth_token: Optional[str] = None) -> Flask:
+def create_app(db_path: Optional[str] = None) -> Flask:
     """Create and configure the Flask dashboard application."""
     app = Flask(
         __name__,
@@ -20,14 +20,11 @@ def create_app(db_url: Optional[str] = None, auth_token: Optional[str] = None) -
     CORS(app)
 
     # Store database configuration
-    app.config["DB_URL"] = db_url
-    app.config["AUTH_TOKEN"] = auth_token
+    app.config["DB_PATH"] = db_path
 
     def get_db() -> TaskDatabase:
         """Get database connection."""
-        return TaskDatabase(
-            db_url=app.config.get("DB_URL"), auth_token=app.config.get("AUTH_TOKEN")
-        )
+        return TaskDatabase(db_path=app.config.get("DB_PATH"))
 
     @app.route("/")
     def index():

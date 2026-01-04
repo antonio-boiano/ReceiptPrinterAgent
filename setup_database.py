@@ -1,9 +1,9 @@
-"""Database setup script."""
+"""Database setup script for local SQLite database."""
 
 import os
+import sqlite3
 import sys
 from dotenv import load_dotenv
-import libsql_experimental as libsql
 
 load_dotenv()
 
@@ -15,7 +15,7 @@ def test_database():
         
         print("\n🔧 Testing database connection...")
         db = TaskDatabase()
-        print("✅ Database connection successful")
+        print(f"✅ Database connection successful ({db.db_path})")
         
         # Test adding a sample task
         from datetime import datetime
@@ -29,11 +29,11 @@ def test_database():
         task_record = db.add_task(SampleTask(), email_context="Database setup test")
         print(f"✅ Created test task with ID: {task_record.id}")
         
-        # Test similarity search
-        print("\n🔍 Testing similarity search...")
+        # Test search
+        print("\n🔍 Testing task search...")
         similar_tasks = db.find_similar_tasks("database test", limit=1)
         if similar_tasks:
-            print(f"✅ Found {len(similar_tasks)} similar task(s)")
+            print(f"✅ Found {len(similar_tasks)} matching task(s)")
         
         db.close()
         return True
@@ -44,62 +44,33 @@ def test_database():
 
 
 def create_database_tables():
-    """Create the required tables in Turso database."""
+    """Create the required tables in local SQLite database."""
     
-    # Get credentials from environment
-    db_url = os.getenv("TURSO_DATABASE_URL")
-    auth_token = os.getenv("TURSO_AUTH_TOKEN")
+    from src.database import TaskDatabase
     
-    if not db_url or not auth_token:
-        print("❌ Missing database credentials!")
-        print("Please set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in your .env file")
-        return False
+    # Get database path
+    db_path = os.getenv("DATABASE_PATH", "tasks.db")
     
-    print(f"📍 Connecting to: {db_url}")
+    print(f"📍 Database path: {db_path}")
     
     try:
-        # Connect to database
-        conn = libsql.connect(db_url, auth_token=auth_token)
-        cursor = conn.cursor()
-        
-        # Check if tasks table already exists
-        cursor.execute("""
-            SELECT name FROM sqlite_master 
-            WHERE type='table' AND name='tasks'
-        """)
-        
-        if cursor.fetchone():
-            print("⚠️  Tasks table already exists")
-            recreate = input("Drop and recreate table? (y/n): ").lower()
+        # Check if database file already exists
+        if os.path.exists(db_path):
+            print("⚠️  Database file already exists")
+            recreate = input("Drop and recreate tables? (y/n): ").lower()
             if recreate == 'y':
+                conn = sqlite3.connect(db_path)
+                cursor = conn.cursor()
                 cursor.execute("DROP TABLE IF EXISTS tasks")
-                cursor.execute("DROP INDEX IF EXISTS tasks_embedding_idx")
-                print("🗑️  Dropped existing table and index")
+                conn.commit()
+                cursor.close()
+                conn.close()
+                print("🗑️  Dropped existing table")
         
-        # Create tasks table
-        print("📝 Creating tasks table...")
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS tasks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                priority INTEGER NOT NULL,
-                due_date TEXT NOT NULL,
-                created_at TEXT NOT NULL,
-                email_context TEXT,
-                embedding F32_BLOB(1536)
-            )
-        """)
-        
-        # Create vector index
-        print("🔍 Creating vector index...")
-        cursor.execute("""
-            CREATE INDEX IF NOT EXISTS tasks_embedding_idx 
-            ON tasks(libsql_vector_idx(embedding))
-        """)
-        
-        conn.commit()
-        cursor.close()
-        conn.close()
+        # Create database and tables
+        print("📝 Creating database and tables...")
+        db = TaskDatabase(db_path=db_path)
+        db.close()
         
         print("✅ Database tables created successfully!")
         return True
@@ -115,22 +86,19 @@ def main():
     print("=" * 30)
     
     # Check environment variables
-    db_url = os.getenv("TURSO_DATABASE_URL")
-    auth_token = os.getenv("TURSO_AUTH_TOKEN")
     openai_key = os.getenv("OPENAI_API_KEY")
+    arcade_key = os.getenv("ARCADE_API_KEY")
     
-    if not db_url or not auth_token or not openai_key:
-        print("❌ Missing required environment variables:")
-        if not db_url:
-            print("   - TURSO_DATABASE_URL")
-        if not auth_token:
-            print("   - TURSO_AUTH_TOKEN") 
-        if not openai_key:
-            print("   - OPENAI_API_KEY")
-        print("\nPlease set these in your .env file")
-        return
-    
-    print("✅ Environment variables found")
+    print("Checking environment variables...")
+    if openai_key:
+        print("   ✅ OPENAI_API_KEY is set")
+    else:
+        print("   ⚠️  OPENAI_API_KEY not set (optional)")
+        
+    if arcade_key:
+        print("   ✅ ARCADE_API_KEY is set")
+    else:
+        print("   ⚠️  ARCADE_API_KEY not set (required for email extraction)")
     
     # Ask about table creation
     print("\n" + "=" * 30)
@@ -151,9 +119,10 @@ def main():
     # Done
     print("\n" + "=" * 30)
     print("✅ Database setup complete!")
-    print("\nYour database is ready for:")
-    print("  - python agent.py")
-    print("  - python main.py")
+    print("\nYour database is ready. You can now run:")
+    print("  - python agent.py      # Extract tasks from Gmail")
+    print("  - python main.py       # Create a task from text")
+    print("  - python dashboard.py  # Run the web dashboard")
 
 
 if __name__ == "__main__":

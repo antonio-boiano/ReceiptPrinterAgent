@@ -1,5 +1,4 @@
 arcadepy
-libsql-experimental
 openai
 python-dotenv
 pydantic

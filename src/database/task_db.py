@@ -1,20 +1,22 @@
-"""Task database with embeddings using Turso and libsql."""
+"""Task database with local SQLite storage."""
 
 import os
+import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, List, Optional
 
-import libsql_experimental as libsql
 from dotenv import load_dotenv
-from openai import OpenAI
 
 load_dotenv()
+
+# Default database path
+DEFAULT_DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "tasks.db")
 
 
 @dataclass
 class TaskRecord:
-    """Task record with embedding."""
+    """Task record."""
 
     id: Optional[int] = None
     name: str = ""
@@ -24,109 +26,75 @@ class TaskRecord:
     embedding: Optional[List[float]] = None
     email_context: Optional[str] = None
     similarity_distance: Optional[float] = (
-        None  # Cosine distance for similarity searches
+        None  # Reserved for future similarity searches
     )
 
 
 class TaskDatabase:
-    """Manage tasks with embeddings in Turso database."""
+    """Manage tasks in local SQLite database."""
 
-    def __init__(self, db_url: Optional[str] = None, auth_token: Optional[str] = None):
-        """Initialize database connection."""
-        self.db_url = db_url or os.getenv("TURSO_DATABASE_URL")
-        self.auth_token = auth_token or os.getenv("TURSO_AUTH_TOKEN")
+    def __init__(self, db_path: Optional[str] = None):
+        """Initialize database connection.
         
-        # OpenAI is optional - only needed for embeddings
-        openai_api_key = os.getenv("OPENAI_API_KEY")
-        self.openai = OpenAI(api_key=openai_api_key) if openai_api_key else None
-        self.embedding_model = "text-embedding-3-small"
-        self.embedding_dimensions = 1536  # Default for text-embedding-3-small
+        Args:
+            db_path: Path to the SQLite database file. Defaults to tasks.db in project root.
+        """
+        self.db_path = db_path or os.getenv("DATABASE_PATH", DEFAULT_DB_PATH)
 
-        # Connect to database
-        if self.db_url and self.auth_token:
-            # Remote Turso database
-            self.conn = libsql.connect(self.db_url, auth_token=self.auth_token)
-        else:
-            # Local SQLite database
-            self.conn = libsql.connect("tasks.db")
+        # Connect to local SQLite database
+        self.conn = sqlite3.connect(self.db_path)
         
         # Ensure tables exist
         self._create_tables()
 
     def _create_tables(self):
-        """Create tasks table with embeddings if it doesn't exist."""
+        """Create tasks table if it doesn't exist."""
         cursor = self.conn.cursor()
-        cursor.execute(f"""
+        cursor.execute("""
             CREATE TABLE IF NOT EXISTS tasks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 priority INTEGER NOT NULL,
                 due_date TEXT NOT NULL,
                 created_at TEXT NOT NULL,
-                email_context TEXT,
-                embedding F32_BLOB({self.embedding_dimensions})
+                email_context TEXT
             )
         """)
 
-        # Create vector index for similarity search
+        # Create index for faster name searches
         cursor.execute("""
-            CREATE INDEX IF NOT EXISTS tasks_embedding_idx 
-            ON tasks(libsql_vector_idx(embedding))
+            CREATE INDEX IF NOT EXISTS tasks_name_idx 
+            ON tasks(name)
         """)
 
         self.conn.commit()
         cursor.close()
 
-    def generate_embedding(self, text: str) -> Optional[List[float]]:
-        """Generate embedding for given text using OpenAI."""
-        if not self.openai:
-            return None
-        response = self.openai.embeddings.create(model=self.embedding_model, input=text)
-        return response.data[0].embedding
-
     def add_task(self, task: Any, email_context: Optional[str] = None) -> TaskRecord:
-        """Add a task to the database with embeddings."""
-        # Generate embedding from task name and context (if OpenAI available)
-        embedding_text = f"{task.name}"
-        if email_context:
-            embedding_text += f" Context: {email_context}"
-
-        embedding = self.generate_embedding(embedding_text)
-
+        """Add a task to the database.
+        
+        Args:
+            task: Task object with name, priority, and due_date attributes
+            email_context: Optional email context for the task
+            
+        Returns:
+            TaskRecord with the created task data
+        """
         cursor = self.conn.cursor()
         
-        if embedding:
-            # Convert embedding to vector format
-            embedding_str = "[" + ",".join(map(str, embedding)) + "]"
-            cursor.execute(
-                """
-                INSERT INTO tasks (name, priority, due_date, created_at, email_context, embedding)
-                VALUES (?, ?, ?, ?, ?, vector32(?))
-            """,
-                (
-                    task.name,
-                    task.priority,
-                    task.due_date,
-                    datetime.now().isoformat(),
-                    email_context,
-                    embedding_str,
-                ),
-            )
-        else:
-            # Insert without embedding
-            cursor.execute(
-                """
-                INSERT INTO tasks (name, priority, due_date, created_at, email_context)
-                VALUES (?, ?, ?, ?, ?)
-            """,
-                (
-                    task.name,
-                    task.priority,
-                    task.due_date,
-                    datetime.now().isoformat(),
-                    email_context,
-                ),
-            )
+        cursor.execute(
+            """
+            INSERT INTO tasks (name, priority, due_date, created_at, email_context)
+            VALUES (?, ?, ?, ?, ?)
+        """,
+            (
+                task.name,
+                task.priority,
+                task.due_date,
+                datetime.now().isoformat(),
+                email_context,
+            ),
+        )
 
         task_id = cursor.lastrowid
         self.conn.commit()
@@ -138,56 +106,20 @@ class TaskDatabase:
             priority=task.priority,
             due_date=task.due_date,
             created_at=datetime.now().isoformat(),
-            embedding=embedding,
             email_context=email_context,
         )
 
     def find_similar_tasks(self, query: str, limit: int = 5) -> List[TaskRecord]:
-        """Find similar tasks based on embedding similarity."""
-        # Generate embedding for query
-        query_embedding = self.generate_embedding(query)
+        """Find tasks matching the query using text search.
         
-        # If no embedding available, fall back to simple text search
-        if not query_embedding:
-            return self._search_tasks_by_name(query, limit)
-        
-        embedding_str = "[" + ",".join(map(str, query_embedding)) + "]"
-
-        cursor = self.conn.cursor()
-        try:
-            cursor.execute(
-                """
-                SELECT 
-                    t.id, t.name, t.priority, t.due_date, t.created_at, 
-                    t.email_context,
-                    vector_distance_cos(t.embedding, vector32(?)) as distance
-                FROM vector_top_k('tasks_embedding_idx', vector32(?), ?) AS v
-                JOIN tasks t ON t.rowid = v.id
-                ORDER BY distance ASC
-            """,
-                (embedding_str, embedding_str, limit),
-            )
-
-            results = []
-            for row in cursor.fetchall():
-                results.append(
-                    TaskRecord(
-                        id=row[0],
-                        name=row[1],
-                        priority=row[2],
-                        due_date=row[3],
-                        created_at=row[4],
-                        email_context=row[5],
-                        similarity_distance=row[6],  # Include the distance from the query
-                    )
-                )
-
-            cursor.close()
-            return results
-        except Exception:
-            cursor.close()
-            # Fall back to text search if vector search fails
-            return self._search_tasks_by_name(query, limit)
+        Args:
+            query: Search query string
+            limit: Maximum number of results to return
+            
+        Returns:
+            List of matching TaskRecord objects
+        """
+        return self._search_tasks_by_name(query, limit)
 
     def _search_tasks_by_name(self, query: str, limit: int = 5) -> List[TaskRecord]:
         """Simple text search fallback when embeddings are not available."""

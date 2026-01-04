@@ -7,38 +7,76 @@ A Python-based task management system that prints tasks to a thermal receipt pri
 - Print tasks to thermal receipt printers
 - Extract tasks from Gmail automatically
 - AI-powered task parsing and prioritization
-- Duplicate detection using vector embeddings
+- Local SQLite database for task storage
 - **Local Dashboard** - Web-based UI for task tracking and management
 - **Notion Integration** - Sync tasks to Notion for team collaboration
 - Integration with multiple services (Gmail, Slack, Calendar, Notion) via Arcade.dev
 
-## Installation
+## Quick Start
+
+### 1. Clone and Install
 
 ```bash
 # Clone the repository
 git clone https://github.com/CodingWithLewis/ReceiptPrinterAgent
-cd receipt-printer-tasks
+cd ReceiptPrinterAgent
+
+# Create a virtual environment (recommended)
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
+```
 
-# Set up environment variables
+### 2. Configure Environment
+
+```bash
+# Copy the example environment file
 cp .env.example .env
+
 # Edit .env with your API keys
+# Required: ARCADE_API_KEY, OPENAI_API_KEY
+```
+
+### 3. Set Up Database
+
+```bash
+# Initialize the local SQLite database
+python setup_database.py
+```
+
+### 4. Run the Application
+
+```bash
+# Option 1: Run the web dashboard
+python dashboard.py
+# Access at http://127.0.0.1:5000
+
+# Option 2: Extract tasks from Gmail
+python agent.py
+
+# Option 3: Create a task from text input
+python main.py
 ```
 
 ## Configuration
 
-Required environment variables:
-- `ARCADE_API_KEY` - Get from [arcade.dev](https://arcade.dev)
-- `OPENAI_API_KEY` - OpenAI API key
-- `TURSO_DATABASE_URL` - Database URL (optional, uses local SQLite by default)
-- `TURSO_AUTH_TOKEN` - Database auth token (if using Turso)
+### Required Environment Variables
 
-Optional environment variables:
-- `NOTION_DATABASE_ID` - Notion database ID for task sync
-- `DASHBOARD_HOST` - Dashboard host (default: 127.0.0.1)
-- `DASHBOARD_PORT` - Dashboard port (default: 5000)
+| Variable | Description |
+|----------|-------------|
+| `ARCADE_API_KEY` | Get from [arcade.dev](https://arcade.dev) |
+| `OPENAI_API_KEY` | OpenAI API key for AI task parsing |
+
+### Optional Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATABASE_PATH` | Path to SQLite database file | `tasks.db` |
+| `NOTION_DATABASE_ID` | Notion database ID for task sync | - |
+| `DASHBOARD_HOST` | Dashboard host address | `127.0.0.1` |
+| `DASHBOARD_PORT` | Dashboard port number | `5000` |
 
 ## Usage
 
@@ -51,7 +89,7 @@ python dashboard.py
 The dashboard provides:
 - Real-time task statistics
 - Task list with priority indicators
-- Search functionality (semantic search)
+- Search functionality
 - Add new tasks directly from the UI
 - Auto-refresh every 30 seconds
 
@@ -59,6 +97,12 @@ The dashboard provides:
 ```bash
 python agent.py
 ```
+
+This will:
+1. Connect to your Gmail via Arcade (authorize if needed)
+2. Analyze recent emails for actionable tasks
+3. Extract and prioritize tasks using AI
+4. Save new tasks to the local database
 
 ### Create a task from text
 ```bash
@@ -113,7 +157,7 @@ The dashboard exposes a REST API:
 
 - `GET /api/tasks` - List all tasks
 - `POST /api/tasks` - Add a new task
-- `GET /api/tasks/search?q=query` - Search tasks (semantic)
+- `GET /api/tasks/search?q=query` - Search tasks
 - `GET /api/stats` - Get task statistics
 
 ## Requirements
@@ -124,12 +168,12 @@ The dashboard exposes a REST API:
 
 ## Architecture
 
-The project uses Arcade.dev for all external integrations:
-- Gmail access for email extraction
-- Notion access for task syncing
-- Calendar, Slack, and other integrations
+The project uses:
+- **Local SQLite database** for task storage (no external database required)
+- **Arcade.dev** for all external integrations (Gmail, Notion, Calendar, Slack)
+- **Flask** for the web dashboard
 
-This provides a unified authentication and authorization flow through Arcade.
+This provides a simple, self-contained setup with no need for remote database services.
 
 ## License
 
