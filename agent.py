@@ -3,15 +3,14 @@
 
 import asyncio
 import datetime
+import json
 import os
+from dataclasses import dataclass
 from typing import List, Optional
 
-from agents import Agent, Runner
-from agents_arcade import get_arcade_tools
-from agents_arcade.errors import AuthorizationError
-from arcadepy import AsyncArcade
+from arcadepy import Arcade
 from dotenv import load_dotenv
-from pydantic import BaseModel
+from openai import OpenAI
 
 from src.database.task_db import TaskDatabase, TaskRecord
 
@@ -19,7 +18,8 @@ from src.database.task_db import TaskDatabase, TaskRecord
 load_dotenv()
 
 
-class Task(BaseModel):
+@dataclass
+class Task:
     """Task model for extracted email tasks."""
 
     name: str
@@ -27,60 +27,136 @@ class Task(BaseModel):
     due_date: str  # ISO format date string
 
 
-class ImportantTasks(BaseModel):
+@dataclass
+class ImportantTasks:
     """Container for extracted tasks and summary."""
 
     tasks: List[Task]
     summary: str
 
 
-async def extract_email_tasks(
-    toolkits: List[str] = ["gmail"],
-    model: str = "o3-mini",
-    user_email: Optional[str] = None,
-) -> ImportantTasks:
+class ArcadeEmailAgent:
+    """Email task extraction agent using Arcade tools directly."""
+
+    def __init__(self, user_id: Optional[str] = None):
+        """Initialize the agent with Arcade client."""
+        self.client = Arcade()
+        self.openai = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.user_id = user_id or os.getenv("ARCADE_USER_ID", "user@example.com")
+
+    def authorize_gmail(self) -> Optional[str]:
+        """Authorize Gmail access via Arcade."""
+        try:
+            auth_response = self.client.tools.authorize(
+                tool_name="Google.ListEmails",
+                user_id=self.user_id,
+            )
+            if auth_response.status == "completed":
+                return None  # Already authorized
+            return auth_response.url  # Return auth URL
+        except Exception as e:
+            return f"Error: {str(e)}"
+
+    def get_emails(self, max_results: int = 10) -> List[dict]:
+        """Fetch recent emails using Arcade Gmail tool."""
+        try:
+            response = self.client.tools.execute(
+                tool_name="Google.ListEmails",
+                inputs={"n_emails": max_results},
+                user_id=self.user_id,
+            )
+            if hasattr(response.output, "value"):
+                return response.output.value if isinstance(response.output.value, list) else []
+            return []
+        except Exception as e:
+            print(f"Error fetching emails: {e}")
+            return []
+
+    def analyze_emails_for_tasks(self, emails: List[dict]) -> ImportantTasks:
+        """Use OpenAI to analyze emails and extract tasks."""
+        if not emails:
+            return ImportantTasks(tasks=[], summary="No emails to analyze")
+
+        # Format emails for analysis
+        emails_text = ""
+        for i, email in enumerate(emails, 1):
+            subject = email.get("subject", "No subject")
+            sender = email.get("sender", "Unknown")
+            snippet = email.get("snippet", "")
+            emails_text += f"\n{i}. From: {sender}\n   Subject: {subject}\n   Preview: {snippet}\n"
+
+        prompt = f"""Analyze these emails and extract actionable tasks. Ignore promotional emails.
+
+Emails:
+{emails_text}
+
+For each actionable email, create a task with:
+- name: Clear task description
+- priority: 1 (HIGH), 2 (MEDIUM), or 3 (LOW)
+- due_date: ISO format date (use today's date + reasonable deadline based on urgency)
+
+Return JSON with format:
+{{"tasks": [{{"name": "...", "priority": 1, "due_date": "2024-01-15"}}], "summary": "Brief summary of what was found"}}
+
+If no actionable tasks, return: {{"tasks": [], "summary": "No actionable tasks found"}}
+"""
+
+        try:
+            response = self.openai.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}],
+                response_format={"type": "json_object"},
+            )
+            result = json.loads(response.choices[0].message.content)
+
+            tasks = [
+                Task(
+                    name=t["name"],
+                    priority=t.get("priority", 2),
+                    due_date=t.get("due_date", datetime.datetime.now().isoformat()[:10]),
+                )
+                for t in result.get("tasks", [])
+            ]
+
+            return ImportantTasks(
+                tasks=tasks, summary=result.get("summary", "Analysis complete")
+            )
+        except Exception as e:
+            print(f"Error analyzing emails: {e}")
+            return ImportantTasks(tasks=[], summary=f"Error: {str(e)}")
+
+    def extract_tasks(self) -> ImportantTasks:
+        """Main method to extract tasks from emails."""
+        # Check authorization
+        auth_url = self.authorize_gmail()
+        if auth_url and auth_url.startswith("http"):
+            print(f"\n🔑 Authorization required. Please visit:\n{auth_url}")
+            input("\nPress Enter after authorizing...")
+
+        # Fetch emails
+        emails = self.get_emails()
+        if not emails:
+            return ImportantTasks(tasks=[], summary="No emails found")
+
+        # Analyze and extract tasks
+        return self.analyze_emails_for_tasks(emails)
+
+
+def extract_email_tasks(user_email: Optional[str] = None) -> ImportantTasks:
     """
-    Extract tasks from Gmail emails using AI agent.
+    Extract tasks from Gmail emails using Arcade tools.
 
     Args:
-        toolkits: List of Arcade toolkits to use (default: ["gmail"])
-        model: AI model to use (default: "o3-mini")
         user_email: User email for context (optional)
 
     Returns:
         ImportantTasks object containing extracted tasks and summary
     """
-    # Initialize Arcade client
-    client = AsyncArcade()
-
-    # Get tools
-    tools = await get_arcade_tools(client, toolkits=toolkits)
-
-    # Create agent
-    agent = Agent(
-        name="Email Task Extractor",
-        instructions=(
-            "You are a helpful assistant that can analyze Gmail emails. "
-            "Your job is to summarize emails and extract actionable tasks. "
-            "Ignore promotional emails. Extract tasks with clear priorities and due dates."
-        ),
-        model=model,
-        tools=tools,  # type: ignore
-        output_type=ImportantTasks,
-    )
-
-    # Run the agent
-    context = {"user_id": user_email} if user_email else {}
-    result = await Runner.run(
-        starting_agent=agent,
-        input="What are my latest emails? Extract any actionable tasks.",
-        context=context,
-    )
-
-    return result.final_output
+    agent = ArcadeEmailAgent(user_id=user_email)
+    return agent.extract_tasks()
 
 
-async def main():
+def main():
     """Main entry point for the email task extraction agent."""
     print("=" * 50)
     print("EMAIL TASK EXTRACTION AGENT")
@@ -100,7 +176,7 @@ async def main():
         print("🔄 Processing...")
 
         # Extract tasks
-        result = await extract_email_tasks(user_email=user_email)
+        result = extract_email_tasks(user_email=user_email)
 
         if result and result.tasks:
             print(f"\n✅ Found {len(result.tasks)} tasks")
@@ -120,14 +196,13 @@ async def main():
                 print(f"   Due: {task.due_date}")
 
                 # Check for duplicates
-                is_duplicate = False
                 similar_tasks = db.find_similar_tasks(task.name)
                 if (
                     similar_tasks
                     and len(similar_tasks) > 0
+                    and similar_tasks[0].similarity_distance is not None
                     and similar_tasks[0].similarity_distance < 0.1
                 ):
-                    is_duplicate = True
                     duplicate_tasks.append(task)
                     continue
 
@@ -153,9 +228,6 @@ async def main():
         else:
             print("\n❌ No actionable tasks found in recent emails")
 
-    except AuthorizationError as e:
-        print("\n❌ Authorization Required")
-        print(f"Please login to Google: {e}")
     except Exception as e:
         print(f"\n❌ Error: {str(e)}")
 
@@ -165,4 +237,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
