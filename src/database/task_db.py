@@ -11,6 +11,24 @@ from openai import OpenAI
 
 load_dotenv()
 
+# Embedding provider configuration
+# Supports: 'openai' (default), 'deepseek' (uses DeepSeek's OpenAI-compatible endpoint)
+# Note: DeepSeek does not have dedicated embedding models, but their API may support it
+EMBEDDING_PROVIDERS = {
+    "openai": {
+        "base_url": None,  # Uses default OpenAI URL
+        "default_model": "text-embedding-3-small",
+        "dimensions": 1536,
+    },
+    "deepseek": {
+        # DeepSeek uses OpenAI-compatible API but may not support embeddings
+        # Fall back to OpenAI for embeddings if available
+        "base_url": "https://api.deepseek.com",
+        "default_model": None,  # DeepSeek doesn't have embedding models
+        "dimensions": None,
+    },
+}
+
 
 @dataclass
 class TaskRecord:
@@ -36,11 +54,9 @@ class TaskDatabase:
         self.db_url = db_url or os.getenv("TURSO_DATABASE_URL")
         self.auth_token = auth_token or os.getenv("TURSO_AUTH_TOKEN")
         
-        # OpenAI is optional - only needed for embeddings
-        openai_api_key = os.getenv("OPENAI_API_KEY")
-        self.openai = OpenAI(api_key=openai_api_key) if openai_api_key else None
-        self.embedding_model = "text-embedding-3-small"
-        self.embedding_dimensions = 1536  # Default for text-embedding-3-small
+        # Initialize embedding client
+        # Priority: EMBEDDING_PROVIDER env var > LLM_PROVIDER > OpenAI if available
+        self._init_embedding_client()
 
         # Connect to database
         if self.db_url and self.auth_token:
@@ -52,6 +68,45 @@ class TaskDatabase:
         
         # Ensure tables exist
         self._create_tables()
+    
+    def _init_embedding_client(self):
+        """Initialize the embedding client based on configuration."""
+        embedding_provider = os.getenv("EMBEDDING_PROVIDER", "").lower()
+        llm_provider = os.getenv("LLM_PROVIDER", "openai").lower()
+        
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+        deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
+        
+        self.embedding_client = None
+        self.embedding_model = None
+        self.embedding_dimensions = 1536  # Default
+        
+        # Determine which provider to use for embeddings
+        # Note: DeepSeek doesn't have embedding models, so we fall back to OpenAI
+        if embedding_provider == "openai" or (not embedding_provider and openai_api_key):
+            # Use OpenAI for embeddings
+            if openai_api_key:
+                self.embedding_client = OpenAI(api_key=openai_api_key)
+                self.embedding_model = "text-embedding-3-small"
+                self.embedding_dimensions = 1536
+                print("🔢 Using OpenAI for embeddings")
+        elif embedding_provider == "deepseek":
+            # DeepSeek doesn't have embedding models - check if OpenAI is available as fallback
+            if openai_api_key:
+                print("⚠️  DeepSeek doesn't have embedding models, falling back to OpenAI for embeddings")
+                self.embedding_client = OpenAI(api_key=openai_api_key)
+                self.embedding_model = "text-embedding-3-small"
+                self.embedding_dimensions = 1536
+            else:
+                print("⚠️  DeepSeek doesn't have embedding models and no OpenAI key available")
+                print("   Duplicate detection will use text matching instead of semantic similarity")
+        elif llm_provider == "deepseek" and not openai_api_key:
+            # Using DeepSeek for LLM but no OpenAI for embeddings
+            print("⚠️  Using DeepSeek for LLM but no OpenAI key for embeddings")
+            print("   Duplicate detection will use text matching instead of semantic similarity")
+        
+        # Legacy compatibility: also set self.openai for backward compatibility
+        self.openai = self.embedding_client
 
     def _create_tables(self):
         """Create tasks table with embeddings if it doesn't exist."""
@@ -78,15 +133,19 @@ class TaskDatabase:
         cursor.close()
 
     def generate_embedding(self, text: str) -> Optional[List[float]]:
-        """Generate embedding for given text using OpenAI."""
-        if not self.openai:
+        """Generate embedding for given text using the configured embedding client."""
+        if not self.embedding_client or not self.embedding_model:
             return None
-        response = self.openai.embeddings.create(model=self.embedding_model, input=text)
-        return response.data[0].embedding
+        try:
+            response = self.embedding_client.embeddings.create(model=self.embedding_model, input=text)
+            return response.data[0].embedding
+        except Exception as e:
+            print(f"⚠️  Error generating embedding: {e}")
+            return None
 
     def add_task(self, task: Any, email_context: Optional[str] = None) -> TaskRecord:
         """Add a task to the database with embeddings."""
-        # Generate embedding from task name and context (if OpenAI available)
+        # Generate embedding from task name and context (if embedding client available)
         embedding_text = f"{task.name}"
         if email_context:
             embedding_text += f" Context: {email_context}"
