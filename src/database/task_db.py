@@ -11,23 +11,11 @@ from openai import OpenAI
 
 load_dotenv()
 
-# Embedding provider configuration
-# Supports: 'openai' (default), 'deepseek' (uses DeepSeek's OpenAI-compatible endpoint)
-# Note: DeepSeek does not have dedicated embedding models, but their API may support it
-EMBEDDING_PROVIDERS = {
-    "openai": {
-        "base_url": None,  # Uses default OpenAI URL
-        "default_model": "text-embedding-3-small",
-        "dimensions": 1536,
-    },
-    "deepseek": {
-        # DeepSeek uses OpenAI-compatible API but may not support embeddings
-        # Fall back to OpenAI for embeddings if available
-        "base_url": "https://api.deepseek.com",
-        "default_model": None,  # DeepSeek doesn't have embedding models
-        "dimensions": None,
-    },
-}
+# Embedding configuration
+# Note: Currently only OpenAI provides embedding models
+# DeepSeek does not support embeddings, so OpenAI is required for semantic similarity
+OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
+OPENAI_EMBEDDING_DIMENSIONS = 1536
 
 
 @dataclass
@@ -55,7 +43,6 @@ class TaskDatabase:
         self.auth_token = auth_token or os.getenv("TURSO_AUTH_TOKEN")
         
         # Initialize embedding client
-        # Priority: EMBEDDING_PROVIDER env var > LLM_PROVIDER > OpenAI if available
         self._init_embedding_client()
 
         # Connect to database
@@ -70,43 +57,42 @@ class TaskDatabase:
         self._create_tables()
     
     def _init_embedding_client(self):
-        """Initialize the embedding client based on configuration."""
+        """Initialize the embedding client based on configuration.
+        
+        Currently only OpenAI supports embeddings. If using DeepSeek for LLM,
+        you can still use OpenAI for embeddings by setting OPENAI_API_KEY.
+        """
         embedding_provider = os.getenv("EMBEDDING_PROVIDER", "").lower()
         llm_provider = os.getenv("LLM_PROVIDER", "openai").lower()
-        
         openai_api_key = os.getenv("OPENAI_API_KEY")
-        deepseek_api_key = os.getenv("DEEPSEEK_API_KEY")
         
         self.embedding_client = None
         self.embedding_model = None
-        self.embedding_dimensions = 1536  # Default
+        self.embedding_dimensions = OPENAI_EMBEDDING_DIMENSIONS  # Default
         
-        # Determine which provider to use for embeddings
-        # Note: DeepSeek doesn't have embedding models, so we fall back to OpenAI
-        if embedding_provider == "openai" or (not embedding_provider and openai_api_key):
-            # Use OpenAI for embeddings
-            if openai_api_key:
-                self.embedding_client = OpenAI(api_key=openai_api_key)
-                self.embedding_model = "text-embedding-3-small"
-                self.embedding_dimensions = 1536
-                print("🔢 Using OpenAI for embeddings")
-        elif embedding_provider == "deepseek":
-            # DeepSeek doesn't have embedding models - check if OpenAI is available as fallback
-            if openai_api_key:
-                print("⚠️  DeepSeek doesn't have embedding models, falling back to OpenAI for embeddings")
-                self.embedding_client = OpenAI(api_key=openai_api_key)
-                self.embedding_model = "text-embedding-3-small"
-                self.embedding_dimensions = 1536
-            else:
-                print("⚠️  DeepSeek doesn't have embedding models and no OpenAI key available")
-                print("   Duplicate detection will use text matching instead of semantic similarity")
-        elif llm_provider == "deepseek" and not openai_api_key:
-            # Using DeepSeek for LLM but no OpenAI for embeddings
-            print("⚠️  Using DeepSeek for LLM but no OpenAI key for embeddings")
+        # Check if we should use OpenAI for embeddings
+        # OpenAI is used if: explicitly set as EMBEDDING_PROVIDER, or OpenAI key is available
+        use_openai = (
+            embedding_provider == "openai" or 
+            (not embedding_provider and openai_api_key)
+        )
+        
+        if use_openai and openai_api_key:
+            self.embedding_client = OpenAI(api_key=openai_api_key)
+            self.embedding_model = OPENAI_EMBEDDING_MODEL
+            self.embedding_dimensions = OPENAI_EMBEDDING_DIMENSIONS
+            print("🔢 Using OpenAI for embeddings")
+        elif embedding_provider == "deepseek" and openai_api_key:
+            # User explicitly requested DeepSeek but it doesn't have embeddings
+            # Fall back to OpenAI
+            print("⚠️  DeepSeek doesn't have embedding models, using OpenAI for embeddings")
+            self.embedding_client = OpenAI(api_key=openai_api_key)
+            self.embedding_model = OPENAI_EMBEDDING_MODEL
+            self.embedding_dimensions = OPENAI_EMBEDDING_DIMENSIONS
+        elif llm_provider == "deepseek" or embedding_provider == "deepseek":
+            # Using DeepSeek but no OpenAI key available for embeddings
+            print("⚠️  No OpenAI key available for embeddings")
             print("   Duplicate detection will use text matching instead of semantic similarity")
-        
-        # Legacy compatibility: also set self.openai for backward compatibility
-        self.openai = self.embedding_client
 
     def _create_tables(self):
         """Create tasks table with embeddings if it doesn't exist."""
