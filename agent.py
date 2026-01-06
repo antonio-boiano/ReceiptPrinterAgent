@@ -11,7 +11,7 @@ from typing import List, Optional
 from arcadepy import Arcade
 from dotenv import load_dotenv
 
-from agent_config import get_llm_client, get_default_model
+from agent_config import get_llm_client, get_default_model, AgentConfig
 from src.database.task_db import TaskDatabase, TaskRecord
 
 # Load environment variables
@@ -43,7 +43,7 @@ class ArcadeEmailAgent:
         self.client = Arcade()
         self.llm_client = get_llm_client()
         self.model = get_default_model()
-        self.user_id = user_id or os.getenv("ARCADE_USER_ID", "user@example.com")
+        self.user_id = user_id or AgentConfig.MAIL_ADDRESS
 
     def authorize_gmail(self) -> Optional[str]:
         """Authorize Gmail access via Arcade."""
@@ -169,8 +169,8 @@ def main():
 
     try:
         # Get user email from environment or ask
-        user_email = os.getenv("ARCADE_USER_ID")
-        if not user_email:
+        user_email = AgentConfig.MAIL_ADDRESS
+        if user_email == "user@example.com":
             user_email = input("\nEnter your email address: ")
 
         print(f"\n📧 Analyzing emails for: {user_email}")

@@ -69,6 +69,9 @@ class AgentConfig:
     DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
     ARCADE_USER_ID = os.getenv("ARCADE_USER_ID", "user@example.com")
     
+    # Mail address for syncing with mail services (can differ from ARCADE_USER_ID)
+    MAIL_ADDRESS = os.getenv("MAIL_ADDRESS") or os.getenv("ARCADE_USER_ID", "user@example.com")
+    
     # LLM Provider (openai or deepseek)
     LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower()
 
@@ -168,6 +171,7 @@ class AgentConfig:
         print(f"LLM Provider: {cls.LLM_PROVIDER}")
         print(f"Model: {cls.DEFAULT_MODEL}")
         print(f"User ID: {cls.ARCADE_USER_ID}")
+        print(f"Mail Address: {cls.MAIL_ADDRESS}")
         print(f"Auto Print: {cls.AUTO_PRINT}")
         print(f"Save PDFs: {cls.SAVE_PDF_COPIES}")
         print(f"Default Toolkits: {', '.join(cls.DEFAULT_TOOLKITS)}")

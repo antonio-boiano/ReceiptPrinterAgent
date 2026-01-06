@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 from arcadepy import Arcade
 from dotenv import load_dotenv
 
-from agent_config import get_llm_client, get_default_model
+from agent_config import get_llm_client, get_default_model, AgentConfig
 
 # Load environment variables
 load_dotenv()
@@ -57,7 +57,7 @@ class ToolkitAgent:
         self.model = model or get_default_model()
         self.client = Arcade()
         self.llm_client = get_llm_client()
-        self.user_id = os.getenv("ARCADE_USER_ID", "user@example.com")
+        self.user_id = AgentConfig.MAIL_ADDRESS
 
     def authorize_tool(self, tool_name: str) -> Optional[str]:
         """Authorize a specific tool."""
