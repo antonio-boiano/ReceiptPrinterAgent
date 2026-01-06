@@ -9,6 +9,7 @@ from arcadepy import Arcade
 from dotenv import load_dotenv
 
 from agent_config import get_llm_client, get_default_model, AgentConfig
+from src.email_utils import get_email_key
 
 # Load environment variables
 load_dotenv()
@@ -137,8 +138,26 @@ class AgentExamples:
         if auth_url and auth_url.startswith("http"):
             return f"Authorization required. Please visit: {auth_url}"
 
-        # Get emails
-        emails = agent.execute_tool("Google.ListEmails", {"n_emails": 5})
+        # Get all unread emails
+        unread_emails = agent.execute_tool("Google.ListEmails", {"n_emails": AgentConfig.MAX_UNREAD_EMAILS, "query": "is:unread"})
+        
+        # Get the most recent emails
+        recent_emails = agent.execute_tool("Google.ListEmails", {"n_emails": AgentConfig.RECENT_EMAILS_COUNT})
+        
+        # Combine emails avoiding duplicates
+        all_emails = {}
+        if isinstance(unread_emails, list):
+            for email in unread_emails:
+                email_key = get_email_key(email)
+                all_emails[email_key] = email
+        
+        if isinstance(recent_emails, list):
+            for email in recent_emails:
+                email_key = get_email_key(email)
+                if email_key not in all_emails:
+                    all_emails[email_key] = email
+        
+        emails = list(all_emails.values())
 
         if isinstance(emails, str) and emails.startswith("Error"):
             return emails
