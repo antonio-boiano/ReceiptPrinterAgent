@@ -55,6 +55,7 @@ python dashboard.py
 
 ### Required environment variables:
 - `ARCADE_API_KEY` - Get from [arcade.dev](https://arcade.dev) - Used for tool integrations (Gmail, Slack, etc.)
+- `ARCADE_USER_ID` - Your email address for authenticating with mail services (Gmail, etc.)
 
 ### LLM Provider (choose one):
 The agent uses a Large Language Model for task extraction and analysis. You can choose between OpenAI and DeepSeek:

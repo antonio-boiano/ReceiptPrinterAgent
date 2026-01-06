@@ -67,7 +67,7 @@ class AgentConfig:
     ARCADE_API_KEY = os.getenv("ARCADE_API_KEY")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-    ARCADE_USER_ID = os.getenv("ARCADE_USER_ID", "hi@lewismenelaws.com")
+    ARCADE_USER_ID = os.getenv("ARCADE_USER_ID", "user@example.com")
     
     # LLM Provider (openai or deepseek)
     LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower()
