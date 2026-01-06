@@ -40,6 +40,7 @@ def get_llm_client() -> OpenAI:
         api_key = os.getenv("DEEPSEEK_API_KEY")
         if not api_key:
             raise ValueError("DEEPSEEK_API_KEY is required when LLM_PROVIDER is 'deepseek'")
+        print(f"🤖 Using LLM provider: DeepSeek (base_url: {LLM_PROVIDERS['deepseek']['base_url']})")
         return OpenAI(
             api_key=api_key,
             base_url=LLM_PROVIDERS["deepseek"]["base_url"],
@@ -49,6 +50,7 @@ def get_llm_client() -> OpenAI:
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
             raise ValueError("OPENAI_API_KEY is required when LLM_PROVIDER is 'openai'")
+        print("🤖 Using LLM provider: OpenAI")
         return OpenAI(api_key=api_key)
 
 
