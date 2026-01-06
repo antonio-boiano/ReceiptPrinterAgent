@@ -33,4 +33,4 @@ def get_email_key(email: dict) -> str:
         return f"unknown_{uuid.uuid4().hex[:8]}"
     
     # Use hash to avoid issues with special characters
-    return hashlib.md5(composite.encode()).hexdigest()
+    return hashlib.sha256(composite.encode()).hexdigest()
