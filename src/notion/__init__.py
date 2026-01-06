@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Optional
 from arcadepy import Arcade
 from dotenv import load_dotenv
 
+from src.email_utils import extract_list_from_response
+
 load_dotenv()
 
 
@@ -66,20 +68,7 @@ class NotionIntegration:
             if not hasattr(response.output, "value") or response.output.value is None:
                 return []
             
-            value = response.output.value
-            
-            # Handle case where value is already a list
-            if isinstance(value, list):
-                return value
-            
-            # Handle case where value is a dict containing results
-            if isinstance(value, dict):
-                for key in ["results", "databases", "items", "data"]:
-                    if key in value and isinstance(value[key], list):
-                        return value[key]
-                return []
-            
-            return []
+            return extract_list_from_response(response.output.value)
         except Exception as e:
             print(f"Error searching databases: {e}")
             return []

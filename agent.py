@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 from agent_config import get_llm_client, get_default_model, AgentConfig, DEFAULT_USER_ID
 from src.database.task_db import TaskDatabase, TaskRecord
-from src.email_utils import get_email_key
+from src.email_utils import get_email_key, extract_list_from_response
 
 # Load environment variables
 load_dotenv()
@@ -94,23 +94,14 @@ class ArcadeEmailAgent:
                 return []
             
             value = response.output.value
+            emails = extract_list_from_response(value)
             
-            # Handle case where value is already a list
-            if isinstance(value, list):
-                return value
-            
-            # Handle case where value is a dict containing emails
-            if isinstance(value, dict):
-                # Try common keys that might contain the email list
-                for key in ["emails", "messages", "items", "data", "results"]:
-                    if key in value and isinstance(value[key], list):
-                        return value[key]
-                # If dict has no recognized list key, return empty
+            if not emails and isinstance(value, dict):
                 print(f"   ⚠️  Response value is a dict but no email list found. Keys: {list(value.keys())}")
-                return []
+            elif not emails and not isinstance(value, (list, dict)):
+                print(f"   ⚠️  Unexpected response value type: {type(value)}")
             
-            print(f"   ⚠️  Unexpected response value type: {type(value)}")
-            return []
+            return emails
         except Exception as e:
             print(f"Error fetching emails: {e}")
             return []
