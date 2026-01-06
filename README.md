@@ -29,16 +29,28 @@ cp .env.example .env
 
 ## Configuration
 
-Required environment variables:
-- `ARCADE_API_KEY` - Get from [arcade.dev](https://arcade.dev)
-- `OPENAI_API_KEY` - OpenAI API key
+### Required environment variables:
+- `ARCADE_API_KEY` - Get from [arcade.dev](https://arcade.dev) - Used for tool integrations (Gmail, Slack, etc.)
+
+### LLM Provider (choose one):
+The agent uses a Large Language Model for task extraction and analysis. You can choose between OpenAI and DeepSeek:
+
+**Option 1: OpenAI (default)**
+- `OPENAI_API_KEY` - Get from [OpenAI](https://platform.openai.com/)
+
+**Option 2: DeepSeek**
+- `LLM_PROVIDER=deepseek` - Set this to use DeepSeek
+- `DEEPSEEK_API_KEY` - Get from [DeepSeek](https://platform.deepseek.com/)
+
+### Optional environment variables:
+- `LLM_PROVIDER` - LLM provider: `openai` (default) or `deepseek`
 - `TURSO_DATABASE_URL` - Database URL (optional, uses local SQLite by default)
 - `TURSO_AUTH_TOKEN` - Database auth token (if using Turso)
-
-Optional environment variables:
 - `NOTION_DATABASE_ID` - Notion database ID for task sync
 - `DASHBOARD_HOST` - Dashboard host (default: 127.0.0.1)
 - `DASHBOARD_PORT` - Dashboard port (default: 5000)
+
+> **Note**: Arcade.dev handles authentication for external tools (Gmail, Slack, Calendar, etc.), while the LLM provider (OpenAI or DeepSeek) is used directly for AI-powered task extraction and analysis.
 
 ## Usage
 
@@ -120,16 +132,14 @@ The dashboard exposes a REST API:
 
 - Python 3.8+
 - Thermal receipt printer (USB) - Optional
-- API keys for OpenAI and Arcade.dev
+- Arcade.dev API key (for tool integrations)
+- LLM API key: OpenAI or DeepSeek (for AI-powered task extraction)
 
 ## Architecture
 
-The project uses Arcade.dev for all external integrations:
-- Gmail access for email extraction
-- Notion access for task syncing
-- Calendar, Slack, and other integrations
-
-This provides a unified authentication and authorization flow through Arcade.
+The project uses:
+- **Arcade.dev** for external tool integrations (Gmail, Notion, Slack, Calendar, etc.) with unified authentication
+- **OpenAI or DeepSeek** for AI-powered task extraction and analysis (configurable via `LLM_PROVIDER`)
 
 ## License
 
