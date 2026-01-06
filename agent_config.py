@@ -60,6 +60,10 @@ def get_default_model() -> str:
     return LLM_PROVIDERS["openai"]["default_model"]
 
 
+# Default user ID for configuration
+DEFAULT_USER_ID = "user@example.com"
+
+
 class AgentConfig:
     """Configuration class for the AI Arcade Agent."""
 
@@ -67,10 +71,10 @@ class AgentConfig:
     ARCADE_API_KEY = os.getenv("ARCADE_API_KEY")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-    ARCADE_USER_ID = os.getenv("ARCADE_USER_ID", "user@example.com")
+    ARCADE_USER_ID = os.getenv("ARCADE_USER_ID", DEFAULT_USER_ID)
     
     # Mail address for syncing with mail services (can differ from ARCADE_USER_ID)
-    MAIL_ADDRESS = os.getenv("MAIL_ADDRESS") or os.getenv("ARCADE_USER_ID", "user@example.com")
+    MAIL_ADDRESS = os.getenv("MAIL_ADDRESS") or ARCADE_USER_ID
     
     # LLM Provider (openai or deepseek)
     LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower()

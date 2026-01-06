@@ -11,7 +11,7 @@ from typing import List, Optional
 from arcadepy import Arcade
 from dotenv import load_dotenv
 
-from agent_config import get_llm_client, get_default_model, AgentConfig
+from agent_config import get_llm_client, get_default_model, AgentConfig, DEFAULT_USER_ID
 from src.database.task_db import TaskDatabase, TaskRecord
 
 # Load environment variables
@@ -170,7 +170,7 @@ def main():
     try:
         # Get user email from environment or ask
         user_email = AgentConfig.MAIL_ADDRESS
-        if user_email == "user@example.com":
+        if user_email == DEFAULT_USER_ID:
             user_email = input("\nEnter your email address: ")
 
         print(f"\n📧 Analyzing emails for: {user_email}")
