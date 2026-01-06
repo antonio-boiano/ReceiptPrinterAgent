@@ -71,7 +71,7 @@ class AgentConfig:
     ARCADE_API_KEY = os.getenv("ARCADE_API_KEY")
     OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
     DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-    ARCADE_USER_ID = os.getenv("ARCADE_USER_ID", DEFAULT_USER_ID)
+    ARCADE_USER_ID = os.getenv("ARCADE_USER_ID") or DEFAULT_USER_ID
     
     # Mail address for syncing with mail services (can differ from ARCADE_USER_ID)
     # Falls back to ARCADE_USER_ID if MAIL_ADDRESS is not set or empty
