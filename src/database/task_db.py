@@ -259,9 +259,19 @@ class TaskDatabase:
         return deleted
 
     def complete_task(self, task_id: int) -> bool:
-        """Mark a task as completed by deleting it (tasks have no completed status)."""
-        # For now, completing a task means removing it from the active list
-        # This could be extended to move to a completed_tasks table if needed
+        """
+        Mark a task as completed by removing it from the active task list.
+        
+        Note: This implementation removes the task from the database as tasks
+        do not have a completed status field. For a full implementation with
+        task history, consider adding a completed_tasks table.
+        
+        Args:
+            task_id: The ID of the task to complete
+            
+        Returns:
+            True if the task was found and completed, False otherwise
+        """
         return self.delete_task(task_id)
 
     def close(self):

@@ -482,8 +482,8 @@
                         </div>
                     </div>
                     <div class="task-actions">
-                        <button class="task-action-btn complete" onclick="completeTask(${task.id})" title="Mark as completed">✓</button>
-                        <button class="task-action-btn delete" onclick="deleteTask(${task.id})" title="Delete task">✕</button>
+                        <button class="task-action-btn complete" data-task-id="${parseInt(task.id)}" title="Mark as completed">✓</button>
+                        <button class="task-action-btn delete" data-task-id="${parseInt(task.id)}" title="Delete task">✕</button>
                     </div>
                 </li>
             `;
@@ -491,8 +491,15 @@
 
         // Complete a task
         async function completeTask(taskId) {
+            // Validate taskId is a positive integer
+            const id = parseInt(taskId);
+            if (!Number.isInteger(id) || id <= 0) {
+                showNotification('Invalid task ID', 'error');
+                return;
+            }
+            
             try {
-                const response = await fetch(`${API_BASE}/api/tasks/${taskId}/complete`, {
+                const response = await fetch(`${API_BASE}/api/tasks/${id}/complete`, {
                     method: 'POST',
                 });
                 const data = await response.json();
@@ -512,12 +519,19 @@
 
         // Delete a task
         async function deleteTask(taskId) {
+            // Validate taskId is a positive integer
+            const id = parseInt(taskId);
+            if (!Number.isInteger(id) || id <= 0) {
+                showNotification('Invalid task ID', 'error');
+                return;
+            }
+            
             if (!confirm('Are you sure you want to delete this task?')) {
                 return;
             }
             
             try {
-                const response = await fetch(`${API_BASE}/api/tasks/${taskId}`, {
+                const response = await fetch(`${API_BASE}/api/tasks/${id}`, {
                     method: 'DELETE',
                 });
                 const data = await response.json();
@@ -734,6 +748,19 @@
             // Set default due date to today
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('task-due-date').value = today;
+            
+            // Event delegation for task action buttons
+            document.getElementById('task-list').addEventListener('click', (e) => {
+                const btn = e.target.closest('.task-action-btn');
+                if (!btn) return;
+                
+                const taskId = btn.dataset.taskId;
+                if (btn.classList.contains('complete')) {
+                    completeTask(taskId);
+                } else if (btn.classList.contains('delete')) {
+                    deleteTask(taskId);
+                }
+            });
         });
 
         // Auto-refresh every 30 seconds
