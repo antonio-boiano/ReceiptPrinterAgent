@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 from agent_config import get_llm_client, get_default_model, AgentConfig, DEFAULT_USER_ID
 from src.database.task_db import TaskDatabase, TaskRecord
-from src.email_utils import get_email_key
+from src.email_utils import get_email_key, extract_list_from_response
 
 # Load environment variables
 load_dotenv()
@@ -76,9 +76,32 @@ class ArcadeEmailAgent:
                 input=input_params,
                 user_id=self.user_id,
             )
-            if hasattr(response.output, "value"):
-                return response.output.value if isinstance(response.output.value, list) else []
-            return []
+            
+            # Check for errors in the response
+            if response.output is None:
+                print("   ⚠️  No output in response")
+                return []
+            
+            if hasattr(response.output, "error") and response.output.error:
+                error = response.output.error
+                print(f"   ❌ API Error: {error.message}")
+                if hasattr(error, "developer_message") and error.developer_message:
+                    print(f"      Developer message: {error.developer_message}")
+                return []
+            
+            if not hasattr(response.output, "value") or response.output.value is None:
+                print("   ⚠️  No value in response output")
+                return []
+            
+            value = response.output.value
+            emails = extract_list_from_response(value)
+            
+            if not emails and isinstance(value, dict):
+                print(f"   ⚠️  Response value is a dict but no email list found. Keys: {list(value.keys())}")
+            elif not emails and not isinstance(value, (list, dict)):
+                print(f"   ⚠️  Unexpected response value type: {type(value)}")
+            
+            return emails
         except Exception as e:
             print(f"Error fetching emails: {e}")
             return []
@@ -246,14 +269,21 @@ def main():
                 print(f"   Priority: {priority_map.get(task.priority, '❓ UNKNOWN')}")
                 print(f"   Due: {task.due_date}")
 
-                # Check for duplicates
+                # Check for duplicates using similarity search
                 similar_tasks = db.find_similar_tasks(task.name)
-                if (
-                    similar_tasks
-                    and len(similar_tasks) > 0
-                    and similar_tasks[0].similarity_distance is not None
-                    and similar_tasks[0].similarity_distance < 0.1
-                ):
+                is_duplicate = False
+                
+                if similar_tasks:
+                    # Check using embedding similarity if available
+                    if (similar_tasks[0].similarity_distance is not None
+                            and similar_tasks[0].similarity_distance < AgentConfig.DUPLICATE_SIMILARITY_THRESHOLD):
+                        is_duplicate = True
+                    # Fallback: check for exact or very similar name match
+                    elif similar_tasks[0].name.lower().strip() == task.name.lower().strip():
+                        is_duplicate = True
+                
+                if is_duplicate:
+                    print(f"   ⚠️  Skipping duplicate task")
                     duplicate_tasks.append(task)
                     continue
 

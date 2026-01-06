@@ -9,7 +9,7 @@ from arcadepy import Arcade
 from dotenv import load_dotenv
 
 from agent_config import get_llm_client, get_default_model, AgentConfig
-from src.email_utils import get_email_key
+from src.email_utils import get_email_key, extract_list_from_response, RESPONSE_LIST_KEYS
 
 # Load environment variables
 load_dotenv()
@@ -81,8 +81,34 @@ class ToolkitAgent:
                 input=inputs,
                 user_id=self.user_id,
             )
-            if hasattr(response.output, "value"):
-                return response.output.value
+            
+            # Check for errors in the response
+            if response.output is None:
+                return "Error: No output in response"
+            
+            if hasattr(response.output, "error") and response.output.error:
+                error = response.output.error
+                return f"Error: {error.message}"
+            
+            if hasattr(response.output, "value") and response.output.value is not None:
+                value = response.output.value
+                
+                # If value is already a list, return it directly
+                if isinstance(value, list):
+                    return value
+                
+                # If value is a dict, try to extract a list from it
+                if isinstance(value, dict):
+                    # Check if any known list keys exist in the dict
+                    has_list_key = any(key in value for key in RESPONSE_LIST_KEYS)
+                    if has_list_key:
+                        # Return the extracted list (could be empty)
+                        return extract_list_from_response(value)
+                    # No known list keys - return dict as-is
+                    return value
+                
+                # For other types, return as-is
+                return value
             return str(response.output)
         except Exception as e:
             return f"Error: {str(e)}"

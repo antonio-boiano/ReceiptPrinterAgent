@@ -3,7 +3,42 @@
 
 import hashlib
 import uuid
-from typing import Optional
+from typing import Any, List, Optional
+
+
+# Common keys used in Arcade API responses that may contain list data
+RESPONSE_LIST_KEYS = ["emails", "messages", "items", "data", "results", "databases"]
+
+
+def extract_list_from_response(value: Any) -> List[Any]:
+    """Extract a list from an Arcade API response value.
+    
+    The response value might be:
+    - A list directly
+    - A dict containing a list under common keys like 'emails', 'messages', etc.
+    
+    Args:
+        value: The response.output.value from an Arcade API response
+        
+    Returns:
+        A list extracted from the value. Always returns a list, never None.
+        Returns an empty list if no list data could be extracted.
+    """
+    if value is None:
+        return []
+    
+    # Handle case where value is already a list
+    if isinstance(value, list):
+        return value
+    
+    # Handle case where value is a dict containing a list
+    if isinstance(value, dict):
+        for key in RESPONSE_LIST_KEYS:
+            if key in value and isinstance(value[key], list):
+                return value[key]
+        return []
+    
+    return []
 
 
 def get_email_key(email: dict) -> str:

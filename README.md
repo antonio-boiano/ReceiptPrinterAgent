@@ -66,15 +66,24 @@ The agent uses a Large Language Model for task extraction and analysis. You can 
 **Option 2: DeepSeek**
 - `LLM_PROVIDER=deepseek` - Set this to use DeepSeek
 - `DEEPSEEK_API_KEY` - Get from [DeepSeek](https://platform.deepseek.com/)
+- **Note**: DeepSeek does not support embedding models. If you want semantic duplicate detection, also set `OPENAI_API_KEY`. Without it, duplicate detection will fall back to exact text matching.
+
+### Embeddings Configuration:
+Embeddings are used for semantic duplicate detection. Currently only OpenAI provides embedding models:
+- `EMBEDDING_PROVIDER` - Embedding provider: `openai` (default). Note: DeepSeek doesn't have embedding models.
+- If using DeepSeek for LLM but want embeddings, set both `DEEPSEEK_API_KEY` and `OPENAI_API_KEY`.
 
 ### Optional environment variables:
 - `MAIL_ADDRESS` - Email address for syncing with mail services. Defaults to the value of `ARCADE_USER_ID` if not set. Use this if your mail address differs from your Arcade user ID.
 - `LLM_PROVIDER` - LLM provider: `openai` (default) or `deepseek`
+- `EMBEDDING_PROVIDER` - Embedding provider for duplicate detection: `openai` (default)
 - `TURSO_DATABASE_URL` - Database URL (optional, uses local SQLite by default)
 - `TURSO_AUTH_TOKEN` - Database auth token (if using Turso)
 - `NOTION_DATABASE_ID` - Notion database ID for task sync
 - `DASHBOARD_HOST` - Dashboard host (default: 127.0.0.1)
 - `DASHBOARD_PORT` - Dashboard port (default: 5000)
+- `MAX_UNREAD_EMAILS` - Maximum number of unread emails to fetch (default: 100)
+- `RECENT_EMAILS_COUNT` - Number of recent emails to fetch (default: 20)
 
 ### Database Configuration
 

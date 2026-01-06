@@ -8,6 +8,8 @@ from typing import Any, Dict, List, Optional
 from arcadepy import Arcade
 from dotenv import load_dotenv
 
+from src.email_utils import extract_list_from_response
+
 load_dotenv()
 
 
@@ -52,9 +54,21 @@ class NotionIntegration:
                 inputs={"query": query, "filter": {"property": "object", "value": "database"}},
                 user_id=self.user_id,
             )
-            if hasattr(response.output, "value"):
-                return response.output.value if isinstance(response.output.value, list) else []
-            return []
+            
+            # Check for errors in the response
+            if response.output is None:
+                print("   ⚠️  No output in response")
+                return []
+            
+            if hasattr(response.output, "error") and response.output.error:
+                error = response.output.error
+                print(f"   ❌ API Error: {error.message}")
+                return []
+            
+            if not hasattr(response.output, "value") or response.output.value is None:
+                return []
+            
+            return extract_list_from_response(response.output.value)
         except Exception as e:
             print(f"Error searching databases: {e}")
             return []
@@ -86,6 +100,17 @@ class NotionIntegration:
                 },
                 user_id=self.user_id,
             )
+            
+            # Check for errors in the response
+            if response.output is None:
+                print("   ⚠️  No output in response")
+                return None
+            
+            if hasattr(response.output, "error") and response.output.error:
+                error = response.output.error
+                print(f"   ❌ API Error: {error.message}")
+                return None
+            
             if hasattr(response.output, "value"):
                 return response.output.value
             return None

@@ -131,9 +131,13 @@ class AgentConfig:
     PRINT_SUCCESS_MESSAGES = True
     SAVE_PDF_COPIES = True
 
-    # Email Settings
-    MAX_UNREAD_EMAILS = 100  # Maximum number of unread emails to fetch
-    RECENT_EMAILS_COUNT = 20  # Number of recent emails to fetch
+    # Email Settings (configurable via environment variables)
+    MAX_UNREAD_EMAILS = int(os.getenv("MAX_UNREAD_EMAILS", "100"))  # Maximum number of unread emails to fetch
+    RECENT_EMAILS_COUNT = int(os.getenv("RECENT_EMAILS_COUNT", "20"))  # Number of recent emails to fetch
+
+    # Duplicate Detection Settings
+    # Similarity threshold for duplicate detection (0.0 = exact match, 1.0 = completely different)
+    DUPLICATE_SIMILARITY_THRESHOLD = float(os.getenv("DUPLICATE_SIMILARITY_THRESHOLD", "0.1"))
 
     # Priority Mappings
     PRIORITY_KEYWORDS = {
