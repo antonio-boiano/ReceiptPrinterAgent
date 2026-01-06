@@ -166,6 +166,13 @@ class AgentConfig:
             print("\nPlease set these in your .env file or environment.")
             return False
 
+        # Warn if ARCADE_USER_ID is using the default value
+        if cls.ARCADE_USER_ID == DEFAULT_USER_ID:
+            print("⚠️  Warning: ARCADE_USER_ID is not set in your environment.")
+            print("   Using default value. Please set ARCADE_USER_ID to your Arcade account email")
+            print("   in your .env file to avoid authentication errors.")
+            print("   This must match the email of your signed-in Arcade account.")
+
         return True
 
     @classmethod
