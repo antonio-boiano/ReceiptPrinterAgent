@@ -19,23 +19,34 @@ from src.dashboard import run_dashboard
 
 def main():
     """Main entry point for the dashboard."""
+    # Get defaults from environment variables
+    default_host = os.getenv("DASHBOARD_HOST", "0.0.0.0")
+    default_port = int(os.getenv("DASHBOARD_PORT", "5000"))
+    default_email_interval = int(os.getenv("DASHBOARD_EMAIL_CHECK_INTERVAL", "1"))
+
     parser = argparse.ArgumentParser(description="Task Management Dashboard")
     parser.add_argument(
         "--host",
-        default="127.0.0.1",
-        help="Host to bind to (default: 127.0.0.1)",
+        default=default_host,
+        help=f"Host to bind to (default: {default_host})",
     )
     parser.add_argument(
         "--port",
         type=int,
-        default=5000,
-        help="Port to bind to (default: 5000)",
+        default=default_port,
+        help=f"Port to bind to (default: {default_port})",
     )
     parser.add_argument(
         "--debug",
         action="store_true",
         default=False,
         help="Run in debug mode (default: False)",
+    )
+    parser.add_argument(
+        "--email-check-interval",
+        type=int,
+        default=default_email_interval,
+        help=f"Interval in minutes for periodic email checking (default: {default_email_interval})",
     )
 
     args = parser.parse_args()
@@ -44,9 +55,16 @@ def main():
     print("TASK DASHBOARD")
     print("=" * 50)
     print(f"\n🌐 Starting dashboard at http://{args.host}:{args.port}")
+    if args.email_check_interval > 0:
+        print(f"📧 Periodic email check: every {args.email_check_interval} minutes")
     print("\nPress Ctrl+C to stop the server.\n")
 
-    run_dashboard(host=args.host, port=args.port, debug=args.debug)
+    run_dashboard(
+        host=args.host,
+        port=args.port,
+        debug=args.debug,
+        email_check_interval=args.email_check_interval
+    )
 
 
 if __name__ == "__main__":

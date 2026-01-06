@@ -152,6 +152,41 @@
             color: #888;
         }
 
+        .task-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: 15px;
+        }
+
+        .task-action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .task-action-btn.complete {
+            background: #27ae60;
+            color: white;
+        }
+
+        .task-action-btn.complete:hover {
+            background: #1e8449;
+            transform: scale(1.05);
+        }
+
+        .task-action-btn.delete {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .task-action-btn.delete:hover {
+            background: #c0392b;
+            transform: scale(1.05);
+        }
+
         .add-task-form {
             display: flex;
             flex-direction: column;
@@ -203,6 +238,30 @@
         .btn-primary:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-email {
+            margin-top: 10px;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-email:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(56, 239, 125, 0.4);
+        }
+
+        .btn-email:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .email-card .value {
+            font-size: 1.2rem;
         }
 
         .search-box {
@@ -306,6 +365,12 @@
                 <div class="icon">📅</div>
                 <div class="value" id="due-today">-</div>
                 <div class="label">Due Today</div>
+            </div>
+            <div class="stat-card email-card">
+                <div class="icon">📧</div>
+                <div class="value" id="email-status">Ready</div>
+                <div class="label">Email Check</div>
+                <button class="btn btn-email" id="email-check-btn" onclick="checkEmails()">Check Now</button>
             </div>
         </div>
 
@@ -416,8 +481,72 @@
                             ${priorityLabel} Priority • Due: ${dueDate}
                         </div>
                     </div>
+                    <div class="task-actions">
+                        <button class="task-action-btn complete" data-task-id="${parseInt(task.id)}" title="Mark as completed">✓</button>
+                        <button class="task-action-btn delete" data-task-id="${parseInt(task.id)}" title="Delete task">✕</button>
+                    </div>
                 </li>
             `;
+        }
+
+        // Complete a task
+        async function completeTask(taskId) {
+            // Validate taskId is a positive integer
+            const id = parseInt(taskId);
+            if (!Number.isInteger(id) || id <= 0) {
+                showNotification('Invalid task ID', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/tasks/${id}/complete`, {
+                    method: 'POST',
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Task completed!', 'success');
+                    loadTasks();
+                    loadStats();
+                } else {
+                    showNotification(data.error || 'Error completing task', 'error');
+                }
+            } catch (error) {
+                console.error('Error completing task:', error);
+                showNotification('Error completing task. Please try again.', 'error');
+            }
+        }
+
+        // Delete a task
+        async function deleteTask(taskId) {
+            // Validate taskId is a positive integer
+            const id = parseInt(taskId);
+            if (!Number.isInteger(id) || id <= 0) {
+                showNotification('Invalid task ID', 'error');
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to delete this task?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/tasks/${id}`, {
+                    method: 'DELETE',
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Task deleted!', 'success');
+                    loadTasks();
+                    loadStats();
+                } else {
+                    showNotification(data.error || 'Error deleting task', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting task:', error);
+                showNotification('Error deleting task. Please try again.', 'error');
+            }
         }
 
         // Search tasks
@@ -518,20 +647,127 @@
             return div.innerHTML;
         }
 
+        // Check emails for tasks
+        async function checkEmails() {
+            const btn = document.getElementById('email-check-btn');
+            const statusEl = document.getElementById('email-status');
+            
+            btn.disabled = true;
+            btn.textContent = 'Checking...';
+            statusEl.textContent = '⏳';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/email/check`, {
+                    method: 'POST',
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Email check started', 'success');
+                    // Poll for status
+                    pollEmailStatus();
+                } else {
+                    showNotification(data.message || 'Error starting email check', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Check Now';
+                    updateEmailStatus();
+                }
+            } catch (error) {
+                console.error('Error checking emails:', error);
+                showNotification('Error checking emails. Please try again.', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Check Now';
+                statusEl.textContent = 'Error';
+            }
+        }
+
+        // Poll email status
+        async function pollEmailStatus() {
+            const btn = document.getElementById('email-check-btn');
+            const statusEl = document.getElementById('email-status');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/email/status`);
+                const data = await response.json();
+                
+                if (data.checking) {
+                    statusEl.textContent = '⏳';
+                    setTimeout(pollEmailStatus, 2000);
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = 'Check Now';
+                    
+                    if (data.error) {
+                        statusEl.textContent = '❌';
+                        showNotification(`Email check failed: ${data.error}`, 'error');
+                    } else if (data.tasks_found > 0) {
+                        statusEl.textContent = `+${data.tasks_found}`;
+                        showNotification(`Found ${data.tasks_found} new task(s) from emails!`, 'success');
+                        loadStats();
+                        loadTasks();
+                    } else {
+                        statusEl.textContent = '✓';
+                        showNotification('No new tasks found in emails', 'success');
+                    }
+                }
+            } catch (error) {
+                console.error('Error polling email status:', error);
+                btn.disabled = false;
+                btn.textContent = 'Check Now';
+                statusEl.textContent = 'Error';
+            }
+        }
+
+        // Update email status display
+        async function updateEmailStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/email/status`);
+                const data = await response.json();
+                const statusEl = document.getElementById('email-status');
+                
+                if (data.checking) {
+                    statusEl.textContent = '⏳';
+                } else if (data.error) {
+                    statusEl.textContent = '❌';
+                } else if (data.last_check) {
+                    statusEl.textContent = '✓';
+                } else {
+                    statusEl.textContent = 'Ready';
+                }
+            } catch (error) {
+                console.error('Error updating email status:', error);
+            }
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             loadStats();
             loadTasks();
+            updateEmailStatus();
             
             // Set default due date to today
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('task-due-date').value = today;
+            
+            // Event delegation for task action buttons
+            document.getElementById('task-list').addEventListener('click', (e) => {
+                const btn = e.target.closest('.task-action-btn');
+                if (!btn) return;
+                
+                const taskId = btn.dataset.taskId;
+                if (btn.classList.contains('complete')) {
+                    completeTask(taskId);
+                } else if (btn.classList.contains('delete')) {
+                    deleteTask(taskId);
+                }
+            });
         });
 
         // Auto-refresh every 30 seconds
         setInterval(() => {
             loadStats();
             loadTasks();
+            updateEmailStatus();
         }, 30000);
     </script>
 </body>
