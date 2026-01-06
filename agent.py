@@ -94,6 +94,7 @@ class ArcadeEmailAgent:
         # Fetch all unread emails
         print("📬 Fetching unread emails...")
         unread_emails = self.get_emails(max_results=AgentConfig.MAX_UNREAD_EMAILS, query="is:unread")
+        print(f"   Found {len(unread_emails)} unread email(s)")
         for email in unread_emails:
             email_key = get_email_key(email)
             all_emails[email_key] = email
@@ -101,11 +102,15 @@ class ArcadeEmailAgent:
         # Fetch the most recent emails
         print(f"📧 Fetching {AgentConfig.RECENT_EMAILS_COUNT} most recent emails...")
         recent_emails = self.get_emails(max_results=AgentConfig.RECENT_EMAILS_COUNT)
+        print(f"   Found {len(recent_emails)} recent email(s)")
+        new_recent_count = 0
         for email in recent_emails:
             email_key = get_email_key(email)
             if email_key not in all_emails:
                 all_emails[email_key] = email
+                new_recent_count += 1
         
+        print(f"📊 Total unique emails to analyze: {len(all_emails)} ({len(unread_emails)} unread + {new_recent_count} additional recent)")
         return list(all_emails.values())
 
     def analyze_emails_for_tasks(self, emails: List[dict]) -> ImportantTasks:
@@ -113,6 +118,8 @@ class ArcadeEmailAgent:
         if not emails:
             return ImportantTasks(tasks=[], summary="No emails to analyze")
 
+        print(f"🔍 Analyzing {len(emails)} emails for actionable tasks...")
+        
         # Format emails for analysis
         emails_text = ""
         for i, email in enumerate(emails, 1):
@@ -138,12 +145,20 @@ If no actionable tasks, return: {{"tasks": [], "summary": "No actionable tasks f
 """
 
         try:
+            print(f"🤖 Calling LLM API (model: {self.model})...")
             response = self.llm_client.chat.completions.create(
                 model=self.model,
                 messages=[{"role": "user", "content": prompt}],
                 response_format={"type": "json_object"},
             )
+            print(f"✅ LLM API response received")
+            
+            # Log usage information if available
+            if hasattr(response, 'usage') and response.usage:
+                print(f"📊 Token usage - Prompt: {response.usage.prompt_tokens}, Completion: {response.usage.completion_tokens}, Total: {response.usage.total_tokens}")
+            
             result = json.loads(response.choices[0].message.content)
+            print(f"📋 LLM extracted {len(result.get('tasks', []))} task(s)")
 
             tasks = [
                 Task(
