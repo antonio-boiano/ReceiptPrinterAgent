@@ -6,8 +6,10 @@ It creates the necessary tables and optionally adds sample data.
 """
 
 import os
-import shutil
 import sys
+
+# Default database path
+DB_PATH = "tasks.db"
 
 
 def check_dependencies():
@@ -28,7 +30,6 @@ def setup_env_file():
     print("\n📝 Setting up environment file...")
     
     env_path = ".env"
-    env_example_path = ".env.example"
     
     if os.path.exists(env_path):
         print("⚠️  .env file already exists")
@@ -73,17 +74,15 @@ def create_local_database():
     try:
         import libsql_experimental as libsql
         
-        db_path = "tasks.db"
-        
         # Remove existing database if user wants to start fresh
-        if os.path.exists(db_path):
-            response = input(f"   Database '{db_path}' exists. Recreate? (y/n): ").lower().strip()
+        if os.path.exists(DB_PATH):
+            response = input(f"   Database '{DB_PATH}' exists. Recreate? (y/n): ").lower().strip()
             if response == 'y':
-                os.remove(db_path)
-                print(f"   Removed existing {db_path}")
+                os.remove(DB_PATH)
+                print(f"   Removed existing {DB_PATH}")
         
         # Connect to local SQLite
-        conn = libsql.connect(db_path)
+        conn = libsql.connect(DB_PATH)
         cursor = conn.cursor()
         
         # Create tasks table
@@ -111,7 +110,7 @@ def create_local_database():
         cursor.close()
         conn.close()
         
-        print(f"✅ Local database '{db_path}' created successfully")
+        print(f"✅ Local database '{DB_PATH}' created successfully")
         return True
         
     except Exception as e:
@@ -132,24 +131,26 @@ def add_sample_data():
         import libsql_experimental as libsql
         from datetime import datetime, timedelta
         
-        conn = libsql.connect("tasks.db")
+        conn = libsql.connect(DB_PATH)
         cursor = conn.cursor()
         
+        now = datetime.now()
         sample_tasks = [
-            ("Review project documentation", 1, (datetime.now() + timedelta(days=1)).isoformat()),
-            ("Update team on progress", 2, (datetime.now() + timedelta(days=2)).isoformat()),
-            ("Complete code review", 1, (datetime.now() + timedelta(days=1)).isoformat()),
-            ("Schedule team meeting", 3, (datetime.now() + timedelta(days=5)).isoformat()),
-            ("Prepare presentation", 2, (datetime.now() + timedelta(days=3)).isoformat()),
+            ("Review project documentation", 1, (now + timedelta(days=1)).isoformat()),
+            ("Update team on progress", 2, (now + timedelta(days=2)).isoformat()),
+            ("Complete code review", 1, (now + timedelta(days=1)).isoformat()),
+            ("Schedule team meeting", 3, (now + timedelta(days=5)).isoformat()),
+            ("Prepare presentation", 2, (now + timedelta(days=3)).isoformat()),
         ]
         
+        created_at = now.isoformat()
         for name, priority, due_date in sample_tasks:
             cursor.execute(
                 """
                 INSERT INTO tasks (name, priority, due_date, created_at, email_context)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (name, priority, due_date, datetime.now().isoformat(), "Sample task")
+                (name, priority, due_date, created_at, "Sample task")
             )
         
         conn.commit()
@@ -171,7 +172,7 @@ def verify_setup():
     try:
         import libsql_experimental as libsql
         
-        conn = libsql.connect("tasks.db")
+        conn = libsql.connect(DB_PATH)
         cursor = conn.cursor()
         
         # Check tables exist
