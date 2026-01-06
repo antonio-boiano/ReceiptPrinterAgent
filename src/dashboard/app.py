@@ -12,6 +12,9 @@ from flask_cors import CORS
 from src.database.task_db import TaskDatabase, TaskRecord
 
 
+# Constants
+SIMILARITY_THRESHOLD = 0.1  # Cosine distance threshold for duplicate detection
+
 # Global variable for email checking status
 _email_check_status = {
     "last_check": None,
@@ -208,7 +211,7 @@ def _check_emails_for_tasks(get_db_func):
                         similar_tasks
                         and len(similar_tasks) > 0
                         and similar_tasks[0].similarity_distance is not None
-                        and similar_tasks[0].similarity_distance < 0.1
+                        and similar_tasks[0].similarity_distance < SIMILARITY_THRESHOLD
                     ):
                         continue
                     
@@ -234,6 +237,11 @@ def _check_emails_for_tasks(get_db_func):
 def _periodic_email_check(get_db_func, interval_minutes: int):
     """Periodically check emails for tasks."""
     global _stop_email_check
+    
+    # Wait for initial delay before first check (60 seconds)
+    # This prevents immediate execution on startup
+    if _stop_email_check.wait(60):
+        return  # Stopped during initial delay
     
     while not _stop_email_check.is_set():
         _check_emails_for_tasks(get_db_func)
@@ -284,17 +292,18 @@ def run_dashboard(
     print(f"Running at http://{host}:{port}")
     if email_check_interval > 0:
         print(f"📧 Periodic email check: every {email_check_interval} minutes")
-        
-        def get_db():
-            return TaskDatabase()
-        
-        start_periodic_email_check(get_db, email_check_interval)
+        start_periodic_email_check(_get_default_db, email_check_interval)
     print("=" * 50)
     
     try:
         app.run(host=host, port=port, debug=debug)
     finally:
         stop_periodic_email_check()
+
+
+def _get_default_db():
+    """Get default database connection for email checking."""
+    return TaskDatabase()
 
 
 if __name__ == "__main__":
