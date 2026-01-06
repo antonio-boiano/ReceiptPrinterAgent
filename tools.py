@@ -137,8 +137,27 @@ class AgentExamples:
         if auth_url and auth_url.startswith("http"):
             return f"Authorization required. Please visit: {auth_url}"
 
-        # Get emails
-        emails = agent.execute_tool("Google.ListEmails", {"n_emails": 5})
+        # Get all unread emails
+        unread_emails = agent.execute_tool("Google.ListEmails", {"n_emails": 100, "query": "is:unread"})
+        
+        # Get the 20 most recent emails
+        recent_emails = agent.execute_tool("Google.ListEmails", {"n_emails": 20})
+        
+        # Combine emails avoiding duplicates
+        all_emails = {}
+        if isinstance(unread_emails, list):
+            for email in unread_emails:
+                email_id = email.get("id") or email.get("message_id") or email.get("subject", "")
+                if email_id:
+                    all_emails[email_id] = email
+        
+        if isinstance(recent_emails, list):
+            for email in recent_emails:
+                email_id = email.get("id") or email.get("message_id") or email.get("subject", "")
+                if email_id and email_id not in all_emails:
+                    all_emails[email_id] = email
+        
+        emails = list(all_emails.values())
 
         if isinstance(emails, str) and emails.startswith("Error"):
             return emails

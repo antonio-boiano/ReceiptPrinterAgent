@@ -58,12 +58,21 @@ class ArcadeEmailAgent:
         except Exception as e:
             return f"Error: {str(e)}"
 
-    def get_emails(self, max_results: int = 10) -> List[dict]:
-        """Fetch recent emails using Arcade Gmail tool."""
+    def get_emails(self, max_results: int = 20, query: Optional[str] = None) -> List[dict]:
+        """Fetch emails using Arcade Gmail tool.
+        
+        Args:
+            max_results: Maximum number of emails to fetch
+            query: Optional Gmail search query (e.g., 'is:unread')
+        """
         try:
+            input_params = {"n_emails": max_results}
+            if query:
+                input_params["query"] = query
+            
             response = self.client.tools.execute(
                 tool_name="Google.ListEmails",
-                input={"n_emails": max_results},
+                input=input_params,
                 user_id=self.user_id,
             )
             if hasattr(response.output, "value"):
@@ -72,6 +81,28 @@ class ArcadeEmailAgent:
         except Exception as e:
             print(f"Error fetching emails: {e}")
             return []
+
+    def get_all_emails(self) -> List[dict]:
+        """Fetch all unread emails and the 20 most recent emails, avoiding duplicates."""
+        all_emails = {}
+        
+        # Fetch all unread emails
+        print("📬 Fetching unread emails...")
+        unread_emails = self.get_emails(max_results=100, query="is:unread")
+        for email in unread_emails:
+            email_id = email.get("id") or email.get("message_id") or email.get("subject", "")
+            if email_id:
+                all_emails[email_id] = email
+        
+        # Fetch the 20 most recent emails
+        print("📧 Fetching 20 most recent emails...")
+        recent_emails = self.get_emails(max_results=20)
+        for email in recent_emails:
+            email_id = email.get("id") or email.get("message_id") or email.get("subject", "")
+            if email_id and email_id not in all_emails:
+                all_emails[email_id] = email
+        
+        return list(all_emails.values())
 
     def analyze_emails_for_tasks(self, emails: List[dict]) -> ImportantTasks:
         """Use OpenAI to analyze emails and extract tasks."""
@@ -134,8 +165,8 @@ If no actionable tasks, return: {{"tasks": [], "summary": "No actionable tasks f
             print(f"\n🔑 Authorization required. Please visit:\n{auth_url}")
             input("\nPress Enter after authorizing...")
 
-        # Fetch emails
-        emails = self.get_emails()
+        # Fetch all unread emails and 20 recent emails
+        emails = self.get_all_emails()
         if not emails:
             return ImportantTasks(tasks=[], summary="No emails found")
 
