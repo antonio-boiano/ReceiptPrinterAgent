@@ -170,7 +170,7 @@ def main():
     try:
         # Get user email from environment or ask
         user_email = AgentConfig.MAIL_ADDRESS
-        if user_email == DEFAULT_USER_ID:
+        if not user_email or user_email == DEFAULT_USER_ID:
             user_email = input("\nEnter your email address: ")
 
         print(f"\n📧 Analyzing emails for: {user_email}")

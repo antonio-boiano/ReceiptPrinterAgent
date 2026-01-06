@@ -75,8 +75,7 @@ class AgentConfig:
     
     # Mail address for syncing with mail services (can differ from ARCADE_USER_ID)
     # Falls back to ARCADE_USER_ID if MAIL_ADDRESS is not set or empty
-    _mail_env = os.getenv("MAIL_ADDRESS")
-    MAIL_ADDRESS = _mail_env if _mail_env else ARCADE_USER_ID
+    MAIL_ADDRESS = os.getenv("MAIL_ADDRESS") or ARCADE_USER_ID
     
     # LLM Provider (openai or deepseek)
     LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai").lower()
