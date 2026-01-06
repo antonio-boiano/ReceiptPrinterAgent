@@ -152,6 +152,41 @@
             color: #888;
         }
 
+        .task-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: 15px;
+        }
+
+        .task-action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .task-action-btn.complete {
+            background: #27ae60;
+            color: white;
+        }
+
+        .task-action-btn.complete:hover {
+            background: #1e8449;
+            transform: scale(1.05);
+        }
+
+        .task-action-btn.delete {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .task-action-btn.delete:hover {
+            background: #c0392b;
+            transform: scale(1.05);
+        }
+
         .add-task-form {
             display: flex;
             flex-direction: column;
@@ -446,8 +481,58 @@
                             ${priorityLabel} Priority • Due: ${dueDate}
                         </div>
                     </div>
+                    <div class="task-actions">
+                        <button class="task-action-btn complete" onclick="completeTask(${task.id})" title="Mark as completed">✓</button>
+                        <button class="task-action-btn delete" onclick="deleteTask(${task.id})" title="Delete task">✕</button>
+                    </div>
                 </li>
             `;
+        }
+
+        // Complete a task
+        async function completeTask(taskId) {
+            try {
+                const response = await fetch(`${API_BASE}/api/tasks/${taskId}/complete`, {
+                    method: 'POST',
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Task completed!', 'success');
+                    loadTasks();
+                    loadStats();
+                } else {
+                    showNotification(data.error || 'Error completing task', 'error');
+                }
+            } catch (error) {
+                console.error('Error completing task:', error);
+                showNotification('Error completing task. Please try again.', 'error');
+            }
+        }
+
+        // Delete a task
+        async function deleteTask(taskId) {
+            if (!confirm('Are you sure you want to delete this task?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/tasks/${taskId}`, {
+                    method: 'DELETE',
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Task deleted!', 'success');
+                    loadTasks();
+                    loadStats();
+                } else {
+                    showNotification(data.error || 'Error deleting task', 'error');
+                }
+            } catch (error) {
+                console.error('Error deleting task:', error);
+                showNotification('Error deleting task. Please try again.', 'error');
+            }
         }
 
         // Search tasks

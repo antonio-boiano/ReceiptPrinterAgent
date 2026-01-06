@@ -249,6 +249,21 @@ class TaskDatabase:
         cursor.close()
         return results
 
+    def delete_task(self, task_id: int) -> bool:
+        """Delete a task by ID."""
+        cursor = self.conn.cursor()
+        cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+        deleted = cursor.rowcount > 0
+        self.conn.commit()
+        cursor.close()
+        return deleted
+
+    def complete_task(self, task_id: int) -> bool:
+        """Mark a task as completed by deleting it (tasks have no completed status)."""
+        # For now, completing a task means removing it from the active list
+        # This could be extended to move to a completed_tasks table if needed
+        return self.delete_task(task_id)
+
     def close(self):
         """Close database connection."""
         self.conn.close()

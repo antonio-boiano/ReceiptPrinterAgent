@@ -103,6 +103,30 @@ def create_app(db_url: Optional[str] = None, auth_token: Optional[str] = None) -
         finally:
             db.close()
 
+    @app.route("/api/tasks/<int:task_id>", methods=["DELETE"])
+    def delete_task(task_id):
+        """Delete a task by ID."""
+        db = get_db()
+        try:
+            deleted = db.delete_task(task_id)
+            if deleted:
+                return jsonify({"success": True, "message": "Task deleted"})
+            return jsonify({"success": False, "error": "Task not found"}), 404
+        finally:
+            db.close()
+
+    @app.route("/api/tasks/<int:task_id>/complete", methods=["POST"])
+    def complete_task(task_id):
+        """Mark a task as completed."""
+        db = get_db()
+        try:
+            completed = db.complete_task(task_id)
+            if completed:
+                return jsonify({"success": True, "message": "Task completed"})
+            return jsonify({"success": False, "error": "Task not found"}), 404
+        finally:
+            db.close()
+
     @app.route("/api/tasks/search", methods=["GET"])
     def search_tasks():
         """Search for similar tasks."""
