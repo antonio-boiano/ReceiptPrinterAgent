@@ -273,10 +273,10 @@ def main():
                 similar_tasks = db.find_similar_tasks(task.name)
                 is_duplicate = False
                 
-                if similar_tasks and len(similar_tasks) > 0:
+                if similar_tasks:
                     # Check using embedding similarity if available
                     if (similar_tasks[0].similarity_distance is not None
-                            and similar_tasks[0].similarity_distance < 0.1):
+                            and similar_tasks[0].similarity_distance < AgentConfig.DUPLICATE_SIMILARITY_THRESHOLD):
                         is_duplicate = True
                     # Fallback: check for exact or very similar name match
                     elif similar_tasks[0].name.lower().strip() == task.name.lower().strip():
