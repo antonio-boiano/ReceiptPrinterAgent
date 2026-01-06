@@ -27,6 +27,30 @@ cp .env.example .env
 # Edit .env with your API keys
 ```
 
+## Quick Start with Local SQLite
+
+For the fastest setup using local SQLite database (no cloud services required):
+
+```bash
+# Run the automatic setup script
+python setup_local_db.py
+```
+
+This script will:
+1. Check that dependencies are installed
+2. Create a `.env` file configured for local SQLite
+3. Create the local `tasks.db` database with required tables
+4. Optionally add sample tasks for testing
+5. Verify the setup is working
+
+After running the script, start the dashboard:
+```bash
+python dashboard.py
+# Access at http://127.0.0.1:5000
+```
+
+> **Note**: For AI-powered features (semantic search, task extraction), you'll need to add an `OPENAI_API_KEY` to your `.env` file. The basic functionality works without it.
+
 ## Configuration
 
 ### Required environment variables:
@@ -49,6 +73,33 @@ The agent uses a Large Language Model for task extraction and analysis. You can 
 - `NOTION_DATABASE_ID` - Notion database ID for task sync
 - `DASHBOARD_HOST` - Dashboard host (default: 127.0.0.1)
 - `DASHBOARD_PORT` - Dashboard port (default: 5000)
+
+### Database Configuration
+
+The application supports two database options:
+
+**Option 1: Local SQLite (Default - Recommended for development)**
+
+No configuration needed! The application automatically creates a local `tasks.db` file.
+
+For automated setup, run:
+```bash
+python setup_local_db.py
+```
+
+**Option 2: Turso Cloud Database (For production/cloud deployment)**
+
+For cloud-based storage with Turso:
+1. Create a database at [turso.tech](https://turso.tech)
+2. Add to your `.env` file:
+   ```
+   TURSO_DATABASE_URL=libsql://your-database-name.turso.io
+   TURSO_AUTH_TOKEN=your-turso-auth-token
+   ```
+3. Run the setup script:
+   ```bash
+   python setup_database.py
+   ```
 
 > **Note**: Arcade.dev handles authentication for external tools (Gmail, Slack, Calendar, etc.), while the LLM provider (OpenAI or DeepSeek) is used directly for AI-powered task extraction and analysis.
 
@@ -94,6 +145,13 @@ This will:
 4. Create individual tasks in Notion
 
 ### Setup database
+
+**For local SQLite (recommended for development):**
+```bash
+python setup_local_db.py
+```
+
+**For Turso cloud database:**
 ```bash
 python setup_database.py
 ```
