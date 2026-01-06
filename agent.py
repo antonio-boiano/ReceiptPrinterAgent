@@ -84,19 +84,23 @@ class ArcadeEmailAgent:
             return []
 
     def get_all_emails(self) -> List[dict]:
-        """Fetch all unread emails and the 20 most recent emails, avoiding duplicates."""
+        """Fetch all unread emails and the recent emails, avoiding duplicates.
+        
+        Returns:
+            List of email dictionaries containing message data.
+        """
         all_emails = {}
         
         # Fetch all unread emails
         print("📬 Fetching unread emails...")
-        unread_emails = self.get_emails(max_results=100, query="is:unread")
+        unread_emails = self.get_emails(max_results=AgentConfig.MAX_UNREAD_EMAILS, query="is:unread")
         for email in unread_emails:
             email_key = get_email_key(email)
             all_emails[email_key] = email
         
-        # Fetch the 20 most recent emails
-        print("📧 Fetching 20 most recent emails...")
-        recent_emails = self.get_emails(max_results=20)
+        # Fetch the most recent emails
+        print(f"📧 Fetching {AgentConfig.RECENT_EMAILS_COUNT} most recent emails...")
+        recent_emails = self.get_emails(max_results=AgentConfig.RECENT_EMAILS_COUNT)
         for email in recent_emails:
             email_key = get_email_key(email)
             if email_key not in all_emails:

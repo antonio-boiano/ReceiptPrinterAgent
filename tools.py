@@ -139,10 +139,10 @@ class AgentExamples:
             return f"Authorization required. Please visit: {auth_url}"
 
         # Get all unread emails
-        unread_emails = agent.execute_tool("Google.ListEmails", {"n_emails": 100, "query": "is:unread"})
+        unread_emails = agent.execute_tool("Google.ListEmails", {"n_emails": AgentConfig.MAX_UNREAD_EMAILS, "query": "is:unread"})
         
-        # Get the 20 most recent emails
-        recent_emails = agent.execute_tool("Google.ListEmails", {"n_emails": 20})
+        # Get the most recent emails
+        recent_emails = agent.execute_tool("Google.ListEmails", {"n_emails": AgentConfig.RECENT_EMAILS_COUNT})
         
         # Combine emails avoiding duplicates
         all_emails = {}
