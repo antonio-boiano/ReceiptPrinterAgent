@@ -37,6 +37,12 @@ def main():
         default=False,
         help="Run in debug mode (default: False)",
     )
+    parser.add_argument(
+        "--email-check-interval",
+        type=int,
+        default=0,
+        help="Interval in minutes for periodic email checking (default: 0 = disabled)",
+    )
 
     args = parser.parse_args()
 
@@ -44,9 +50,16 @@ def main():
     print("TASK DASHBOARD")
     print("=" * 50)
     print(f"\n🌐 Starting dashboard at http://{args.host}:{args.port}")
+    if args.email_check_interval > 0:
+        print(f"📧 Periodic email check: every {args.email_check_interval} minutes")
     print("\nPress Ctrl+C to stop the server.\n")
 
-    run_dashboard(host=args.host, port=args.port, debug=args.debug)
+    run_dashboard(
+        host=args.host,
+        port=args.port,
+        debug=args.debug,
+        email_check_interval=args.email_check_interval
+    )
 
 
 if __name__ == "__main__":

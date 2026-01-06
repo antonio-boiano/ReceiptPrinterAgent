@@ -77,7 +77,7 @@ class ToolkitAgent:
         try:
             response = self.client.tools.execute(
                 tool_name=tool_name,
-                inputs=inputs,
+                input=inputs,
                 user_id=self.user_id,
             )
             if hasattr(response.output, "value"):

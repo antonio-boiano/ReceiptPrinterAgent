@@ -205,6 +205,30 @@
             box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
         }
 
+        .btn-email {
+            margin-top: 10px;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .btn-email:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(56, 239, 125, 0.4);
+        }
+
+        .btn-email:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .email-card .value {
+            font-size: 1.2rem;
+        }
+
         .search-box {
             margin-bottom: 20px;
         }
@@ -306,6 +330,12 @@
                 <div class="icon">📅</div>
                 <div class="value" id="due-today">-</div>
                 <div class="label">Due Today</div>
+            </div>
+            <div class="stat-card email-card">
+                <div class="icon">📧</div>
+                <div class="value" id="email-status">Ready</div>
+                <div class="label">Email Check</div>
+                <button class="btn btn-email" id="email-check-btn" onclick="checkEmails()">Check Now</button>
             </div>
         </div>
 
@@ -518,10 +548,103 @@
             return div.innerHTML;
         }
 
+        // Check emails for tasks
+        async function checkEmails() {
+            const btn = document.getElementById('email-check-btn');
+            const statusEl = document.getElementById('email-status');
+            
+            btn.disabled = true;
+            btn.textContent = 'Checking...';
+            statusEl.textContent = '⏳';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/email/check`, {
+                    method: 'POST',
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Email check started', 'success');
+                    // Poll for status
+                    pollEmailStatus();
+                } else {
+                    showNotification(data.message || 'Error starting email check', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Check Now';
+                    updateEmailStatus();
+                }
+            } catch (error) {
+                console.error('Error checking emails:', error);
+                showNotification('Error checking emails. Please try again.', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Check Now';
+                statusEl.textContent = 'Error';
+            }
+        }
+
+        // Poll email status
+        async function pollEmailStatus() {
+            const btn = document.getElementById('email-check-btn');
+            const statusEl = document.getElementById('email-status');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/email/status`);
+                const data = await response.json();
+                
+                if (data.checking) {
+                    statusEl.textContent = '⏳';
+                    setTimeout(pollEmailStatus, 2000);
+                } else {
+                    btn.disabled = false;
+                    btn.textContent = 'Check Now';
+                    
+                    if (data.error) {
+                        statusEl.textContent = '❌';
+                        showNotification(`Email check failed: ${data.error}`, 'error');
+                    } else if (data.tasks_found > 0) {
+                        statusEl.textContent = `+${data.tasks_found}`;
+                        showNotification(`Found ${data.tasks_found} new task(s) from emails!`, 'success');
+                        loadStats();
+                        loadTasks();
+                    } else {
+                        statusEl.textContent = '✓';
+                        showNotification('No new tasks found in emails', 'success');
+                    }
+                }
+            } catch (error) {
+                console.error('Error polling email status:', error);
+                btn.disabled = false;
+                btn.textContent = 'Check Now';
+                statusEl.textContent = 'Error';
+            }
+        }
+
+        // Update email status display
+        async function updateEmailStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/api/email/status`);
+                const data = await response.json();
+                const statusEl = document.getElementById('email-status');
+                
+                if (data.checking) {
+                    statusEl.textContent = '⏳';
+                } else if (data.error) {
+                    statusEl.textContent = '❌';
+                } else if (data.last_check) {
+                    statusEl.textContent = '✓';
+                } else {
+                    statusEl.textContent = 'Ready';
+                }
+            } catch (error) {
+                console.error('Error updating email status:', error);
+            }
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             loadStats();
             loadTasks();
+            updateEmailStatus();
             
             // Set default due date to today
             const today = new Date().toISOString().split('T')[0];
@@ -532,6 +655,7 @@
         setInterval(() => {
             loadStats();
             loadTasks();
+            updateEmailStatus();
         }, 30000);
     </script>
 </body>

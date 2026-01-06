@@ -63,7 +63,7 @@ class ArcadeEmailAgent:
         try:
             response = self.client.tools.execute(
                 tool_name="Google.ListEmails",
-                inputs={"n_emails": max_results},
+                input={"n_emails": max_results},
                 user_id=self.user_id,
             )
             if hasattr(response.output, "value"):
