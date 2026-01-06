@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 
 from agent_config import get_llm_client, get_default_model, AgentConfig, DEFAULT_USER_ID
 from src.database.task_db import TaskDatabase, TaskRecord
+from src.email_utils import get_email_key
 
 # Load environment variables
 load_dotenv()
@@ -90,17 +91,16 @@ class ArcadeEmailAgent:
         print("📬 Fetching unread emails...")
         unread_emails = self.get_emails(max_results=100, query="is:unread")
         for email in unread_emails:
-            email_id = email.get("id") or email.get("message_id") or email.get("subject", "")
-            if email_id:
-                all_emails[email_id] = email
+            email_key = get_email_key(email)
+            all_emails[email_key] = email
         
         # Fetch the 20 most recent emails
         print("📧 Fetching 20 most recent emails...")
         recent_emails = self.get_emails(max_results=20)
         for email in recent_emails:
-            email_id = email.get("id") or email.get("message_id") or email.get("subject", "")
-            if email_id and email_id not in all_emails:
-                all_emails[email_id] = email
+            email_key = get_email_key(email)
+            if email_key not in all_emails:
+                all_emails[email_key] = email
         
         return list(all_emails.values())
 

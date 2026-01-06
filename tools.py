@@ -9,6 +9,7 @@ from arcadepy import Arcade
 from dotenv import load_dotenv
 
 from agent_config import get_llm_client, get_default_model, AgentConfig
+from src.email_utils import get_email_key
 
 # Load environment variables
 load_dotenv()
@@ -147,15 +148,14 @@ class AgentExamples:
         all_emails = {}
         if isinstance(unread_emails, list):
             for email in unread_emails:
-                email_id = email.get("id") or email.get("message_id") or email.get("subject", "")
-                if email_id:
-                    all_emails[email_id] = email
+                email_key = get_email_key(email)
+                all_emails[email_key] = email
         
         if isinstance(recent_emails, list):
             for email in recent_emails:
-                email_id = email.get("id") or email.get("message_id") or email.get("subject", "")
-                if email_id and email_id not in all_emails:
-                    all_emails[email_id] = email
+                email_key = get_email_key(email)
+                if email_key not in all_emails:
+                    all_emails[email_key] = email
         
         emails = list(all_emails.values())
 
