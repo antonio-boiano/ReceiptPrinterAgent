@@ -131,9 +131,9 @@ class AgentConfig:
     PRINT_SUCCESS_MESSAGES = True
     SAVE_PDF_COPIES = True
 
-    # Email Settings
-    MAX_UNREAD_EMAILS = 100  # Maximum number of unread emails to fetch
-    RECENT_EMAILS_COUNT = 20  # Number of recent emails to fetch
+    # Email Settings (configurable via environment variables)
+    MAX_UNREAD_EMAILS = int(os.getenv("MAX_UNREAD_EMAILS", "100"))  # Maximum number of unread emails to fetch
+    RECENT_EMAILS_COUNT = int(os.getenv("RECENT_EMAILS_COUNT", "20"))  # Number of recent emails to fetch
 
     # Priority Mappings
     PRIORITY_KEYWORDS = {

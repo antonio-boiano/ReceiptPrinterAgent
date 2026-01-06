@@ -75,6 +75,8 @@ The agent uses a Large Language Model for task extraction and analysis. You can 
 - `NOTION_DATABASE_ID` - Notion database ID for task sync
 - `DASHBOARD_HOST` - Dashboard host (default: 127.0.0.1)
 - `DASHBOARD_PORT` - Dashboard port (default: 5000)
+- `MAX_UNREAD_EMAILS` - Maximum number of unread emails to fetch (default: 100)
+- `RECENT_EMAILS_COUNT` - Number of recent emails to fetch (default: 20)
 
 ### Database Configuration
 

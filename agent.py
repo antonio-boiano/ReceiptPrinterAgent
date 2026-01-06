@@ -269,14 +269,21 @@ def main():
                 print(f"   Priority: {priority_map.get(task.priority, '❓ UNKNOWN')}")
                 print(f"   Due: {task.due_date}")
 
-                # Check for duplicates
+                # Check for duplicates using similarity search
                 similar_tasks = db.find_similar_tasks(task.name)
-                if (
-                    similar_tasks
-                    and len(similar_tasks) > 0
-                    and similar_tasks[0].similarity_distance is not None
-                    and similar_tasks[0].similarity_distance < 0.1
-                ):
+                is_duplicate = False
+                
+                if similar_tasks and len(similar_tasks) > 0:
+                    # Check using embedding similarity if available
+                    if (similar_tasks[0].similarity_distance is not None
+                            and similar_tasks[0].similarity_distance < 0.1):
+                        is_duplicate = True
+                    # Fallback: check for exact or very similar name match
+                    elif similar_tasks[0].name.lower().strip() == task.name.lower().strip():
+                        is_duplicate = True
+                
+                if is_duplicate:
+                    print(f"   ⚠️  Skipping duplicate task")
                     duplicate_tasks.append(task)
                     continue
 
