@@ -52,8 +52,33 @@ class NotionIntegration:
                 inputs={"query": query, "filter": {"property": "object", "value": "database"}},
                 user_id=self.user_id,
             )
-            if hasattr(response.output, "value"):
-                return response.output.value if isinstance(response.output.value, list) else []
+            
+            # Check for errors in the response
+            if response.output is None:
+                print("   ⚠️  No output in response")
+                return []
+            
+            if hasattr(response.output, "error") and response.output.error:
+                error = response.output.error
+                print(f"   ❌ API Error: {error.message}")
+                return []
+            
+            if not hasattr(response.output, "value") or response.output.value is None:
+                return []
+            
+            value = response.output.value
+            
+            # Handle case where value is already a list
+            if isinstance(value, list):
+                return value
+            
+            # Handle case where value is a dict containing results
+            if isinstance(value, dict):
+                for key in ["results", "databases", "items", "data"]:
+                    if key in value and isinstance(value[key], list):
+                        return value[key]
+                return []
+            
             return []
         except Exception as e:
             print(f"Error searching databases: {e}")
@@ -86,6 +111,17 @@ class NotionIntegration:
                 },
                 user_id=self.user_id,
             )
+            
+            # Check for errors in the response
+            if response.output is None:
+                print("   ⚠️  No output in response")
+                return None
+            
+            if hasattr(response.output, "error") and response.output.error:
+                error = response.output.error
+                print(f"   ❌ API Error: {error.message}")
+                return None
+            
             if hasattr(response.output, "value"):
                 return response.output.value
             return None

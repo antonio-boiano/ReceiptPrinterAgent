@@ -76,8 +76,40 @@ class ArcadeEmailAgent:
                 input=input_params,
                 user_id=self.user_id,
             )
-            if hasattr(response.output, "value"):
-                return response.output.value if isinstance(response.output.value, list) else []
+            
+            # Check for errors in the response
+            if response.output is None:
+                print("   ⚠️  No output in response")
+                return []
+            
+            if hasattr(response.output, "error") and response.output.error:
+                error = response.output.error
+                print(f"   ❌ API Error: {error.message}")
+                if hasattr(error, "developer_message") and error.developer_message:
+                    print(f"      Developer message: {error.developer_message}")
+                return []
+            
+            if not hasattr(response.output, "value") or response.output.value is None:
+                print("   ⚠️  No value in response output")
+                return []
+            
+            value = response.output.value
+            
+            # Handle case where value is already a list
+            if isinstance(value, list):
+                return value
+            
+            # Handle case where value is a dict containing emails
+            if isinstance(value, dict):
+                # Try common keys that might contain the email list
+                for key in ["emails", "messages", "items", "data", "results"]:
+                    if key in value and isinstance(value[key], list):
+                        return value[key]
+                # If dict has no recognized list key, return empty
+                print(f"   ⚠️  Response value is a dict but no email list found. Keys: {list(value.keys())}")
+                return []
+            
+            print(f"   ⚠️  Unexpected response value type: {type(value)}")
             return []
         except Exception as e:
             print(f"Error fetching emails: {e}")

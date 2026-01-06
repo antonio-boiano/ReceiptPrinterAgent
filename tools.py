@@ -81,8 +81,32 @@ class ToolkitAgent:
                 input=inputs,
                 user_id=self.user_id,
             )
-            if hasattr(response.output, "value"):
-                return response.output.value
+            
+            # Check for errors in the response
+            if response.output is None:
+                return "Error: No output in response"
+            
+            if hasattr(response.output, "error") and response.output.error:
+                error = response.output.error
+                return f"Error: {error.message}"
+            
+            if hasattr(response.output, "value") and response.output.value is not None:
+                value = response.output.value
+                
+                # Handle case where value is already a list
+                if isinstance(value, list):
+                    return value
+                
+                # Handle case where value is a dict containing a list
+                if isinstance(value, dict):
+                    # Try common keys that might contain data
+                    for key in ["emails", "messages", "items", "data", "results"]:
+                        if key in value and isinstance(value[key], list):
+                            return value[key]
+                    # Return the dict as-is if no list found
+                    return value
+                
+                return value
             return str(response.output)
         except Exception as e:
             return f"Error: {str(e)}"
