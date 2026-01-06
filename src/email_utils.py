@@ -21,7 +21,8 @@ def extract_list_from_response(value: Any) -> List[Any]:
         value: The response.output.value from an Arcade API response
         
     Returns:
-        A list extracted from the value, or empty list if not found
+        A list extracted from the value. Always returns a list, never None.
+        Returns an empty list if no list data could be extracted.
     """
     if value is None:
         return []
