@@ -55,7 +55,6 @@ python dashboard.py
 
 ### Required environment variables:
 - `ARCADE_API_KEY` - Get from [arcade.dev](https://arcade.dev) - Used for tool integrations (Gmail, Slack, etc.)
-- `ARCADE_USER_ID` - Your Arcade user ID for API authentication
 
 ### LLM Provider (choose one):
 The agent uses a Large Language Model for task extraction and analysis. You can choose between OpenAI and DeepSeek:
@@ -68,6 +67,7 @@ The agent uses a Large Language Model for task extraction and analysis. You can 
 - `DEEPSEEK_API_KEY` - Get from [DeepSeek](https://platform.deepseek.com/)
 
 ### Optional environment variables:
+- `ARCADE_USER_ID` - Your Arcade user ID for API authentication (recommended to set for proper functionality)
 - `MAIL_ADDRESS` - Email address for syncing with mail services (defaults to `ARCADE_USER_ID` if not set). Use this if your mail address differs from your Arcade user ID.
 - `LLM_PROVIDER` - LLM provider: `openai` (default) or `deepseek`
 - `TURSO_DATABASE_URL` - Database URL (optional, uses local SQLite by default)
